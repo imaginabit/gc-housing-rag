@@ -1,10 +1,11 @@
-"""
-Pipeline principal de indexación RAG.
+"""Pipeline principal de indexación RAG.
 
 Coordina la ingestión de datos, generación de chunks,
 embeddings e indexación en Pinecone.
 """
 import pandas as pd
+import unicodedata
+import re
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -12,6 +13,14 @@ from ..config import DATA_RAW_DIR, DATA_PROCESSED_DIR, EMBEDDING_DIM
 from ..ingest import fetch_ine_population, fetch_turismo_data
 from .embedder import embed_texts, embed_query
 from .indexer import index_data, create_index_if_not_exists
+
+
+def slugify(text: str) -> str:
+    """Convierte texto a ID ASCII seguro (sin acentos, sin espacios)."""
+    text = unicodedata.normalize('NFD', text)
+    text = ''.join(c for c in text if unicodedata.category(c) != 'Mn')
+    text = re.sub(r'[^a-zA-Z0-9_]', '_', text)
+    return text.lower()
 
 
 def load_processed_data() -> Dict[str, pd.DataFrame]:
@@ -83,7 +92,7 @@ def create_chunks(data: Dict[str, pd.DataFrame]) -> List[Dict[str, Any]]:
                 )
                 
                 chunks.append({
-                    "id": f"ine_{barrio.lower().replace(' ', '_')}",
+                    "id": f"ine_{slugify(barrio)}",
                     "text": text,
                     "metadata": {
                         "source": "INE - Padrón de habitantes",
@@ -122,7 +131,7 @@ def create_chunks(data: Dict[str, pd.DataFrame]) -> List[Dict[str, Any]]:
             )
             
             chunks.append({
-                "id": f"turismo_{barrio.lower().replace(' ', '_')}",
+                "id": f"turismo_{slugify(barrio)}",
                 "text": text,
                 "metadata": {
                     "source": "Registro de Turismo de Canarias",
@@ -165,7 +174,7 @@ def create_chunks(data: Dict[str, pd.DataFrame]) -> List[Dict[str, Any]]:
             )
             
             chunks.append({
-                "id": f"ratio_{barrio.lower().replace(' ', '_')}",
+                "id": f"ratio_{slugify(barrio)}",
                 "text": text,
                 "metadata": {
                     "source": "Análisis comparativo INE + Registro Turismo",

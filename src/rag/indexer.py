@@ -1,78 +1,90 @@
 """
-Indexación y query de Pinecone.
+Indexación y query de Pinecone (v3 API).
 
 Pinecone es un vector store serverless (free tier disponible).
 """
 import pinecone
+from pinecone import Pinecone, ServerlessSpec
 from typing import List, Dict, Any, Optional
-from ..config import PINECONE_API_KEY, PINECONE_INDEX, PINECONE_ENV
+import os
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
+
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
+PINECONE_INDEX = os.getenv("PINECONE_INDEX", "gc-housing")
+PINECONE_ENV = os.getenv("PINECONE_ENV", "us-east-1")
 
 
-def init_pinecone():
+def get_pinecone_client() -> Pinecone:
+    """Devuelve instancia de Pinecone."""
+    return Pinecone(api_key=PINECONE_API_KEY)
+
+
+def create_index_if_not_exists(dimension: int = None):
     """
-    Inicializa la conexión con Pinecone.
+    Crea/recrea el índice en Pinecone con la dimensión correcta.
     """
-    pinecone.init(
-        api_key=PINECONE_API_KEY,
-        environment=PINECONE_ENV
-    )
-
-
-def create_index_if_not_exists(dimension: int = 1536):
-    """
-    Crea el índice en Pinecone si no existe.
+    from ..config import EMBEDDING_DIM
+    dim = dimension or EMBEDDING_DIM
     
-    Args:
-        dimension: Dimensión de los embeddings (1536 para MiniMax)
-    """
-    init_pinecone()
+    pc = get_pinecone_client()
+    index_name = PINECONE_INDEX
     
-    if PINECONE_INDEX not in pinecone.list_indexes():
-        print(f"  Creando índice '{PINECONE_INDEX}' en Pinecone...")
-        pinecone.create_index(
-            PINECONE_INDEX,
-            dimension=dimension,
-            metric="cosine"
+    # Delete if exists (to recreate with correct dimension)
+    if index_name in pc.list_indexes().names():
+        print(f"  🗑️ Borrando índice existente '{index_name}'...")
+        pc.delete_index(index_name)
+    
+    print(f"  Creando índice '{index_name}' (dim={dim})...")
+    pc.create_index(
+        name=index_name,
+        dimension=dim,
+        metric="cosine",
+        spec=ServerlessSpec(
+            cloud="aws",
+            region=PINECONE_ENV or "us-east-1"
         )
-        print(f"  ✅ Índice creado")
-    else:
-        print(f"  ℹ Índice '{PINECONE_INDEX}' ya existe")
+    )
+    print(f"  ✅ Índice creado")
 
 
 def index_data(chunks: List[Dict[str, Any]]):
     """
     Indexa documentos (chunks) en Pinecone.
-    
-    Cada chunk debe tener:
-    - id: identificador único
-    - embedding: vector de embedding
-    - metadata: dict con text, source, año, barrio, etc.
-    
-    Args:
-        chunks: Lista de dicts con {id, embedding, metadata}
     """
-    init_pinecone()
+    pc = get_pinecone_client()
     create_index_if_not_exists()
     
-    index = pinecone.Index(PINECONE_INDEX)
+    index = pc.Index(PINECONE_INDEX)
     
-    # Preparar vectores para upsert
     vectors = []
     for chunk in chunks:
-        vectors.append((
-            chunk["id"],
-            chunk["embedding"],
-            chunk.get("metadata", {})
-        ))
+        # Convert numpy floats to native Python floats for JSON serialization
+        embedding = chunk["embedding"]
+        if hasattr(embedding, 'tolist'):
+            embedding = embedding.tolist()
+        
+        # Also convert any numpy types in metadata
+        metadata = {}
+        for k, v in chunk.get("metadata", {}).items():
+            if hasattr(v, 'item'):  # numpy type
+                v = v.item()
+            metadata[k] = v
+        
+        vectors.append({
+            "id": chunk["id"],
+            "values": embedding,
+            "metadata": metadata
+        })
     
-    # Upsert en batches
     batch_size = 100
     for i in range(0, len(vectors), batch_size):
         batch = vectors[i:i+batch_size]
         index.upsert(vectors=batch)
-        print(f"  📦 Indexados {min(i+batch_size, len(vectors))}/{len(vectors)} chunks")
+        print(f"  📦 Indexados {min(i+batch_size, len(vectors))}/{len(vectors)}")
     
-    print(f"  ✅ Indexación completa: {len(vectors)} documentos en '{PINECONE_INDEX}'")
+    print(f"  ✅ Indexación completa: {len(vectors)} documentos")
 
 
 def query_index(
@@ -82,17 +94,9 @@ def query_index(
 ) -> List[Dict[str, Any]]:
     """
     Query el índice de Pinecone con un embedding.
-    
-    Args:
-        query_embedding: Vector de embedding de la query
-        top_k: Número de resultados a devolver
-        filter_dict: Filtro opcional (ej: {"barrio": "Vegueta"})
-    
-    Returns:
-        Lista de resultados con {id, score, metadata}
     """
-    init_pinecone()
-    index = pinecone.Index(PINECONE_INDEX)
+    pc = get_pinecone_client()
+    index = pc.Index(PINECONE_INDEX)
     
     result = index.query(
         vector=query_embedding,
@@ -105,11 +109,8 @@ def query_index(
 
 
 def delete_all():
-    """
-    Borra todos los vectores del índice.
-    Útil para re-indexar desde cero.
-    """
-    init_pinecone()
-    index = pinecone.Index(PINECONE_INDEX)
+    """Borra todos los vectores del índice."""
+    pc = get_pinecone_client()
+    index = pc.Index(PINECONE_INDEX)
     index.delete(delete_all=True)
-    print(f"  🗑️  Borrado todos los vectores de '{PINECONE_INDEX}'")
+    print(f"  🗑️ Borrado todos los vectores")

@@ -1,71 +1,56 @@
 """
-Embeddings usando la API de MiniMax.
+Embeddings usando sentence-transformers (local, gratis).
 
-MiniMax proporciona modelos de embedding a través de su API.
-El modelo `embo-01` produce embeddings de 1536 dimensiones.
+Usa el modelo 'all-MiniLM-L6-v2' que produce embeddings de 384 dims.
+No requiere API key — funciona 100% en local.
 """
-import httpx
+from sentence_transformers import SentenceTransformer
 from typing import List
-from ..config import MINIMAX_API_KEY, MINIMAX_BASE_URL, EMBEDDING_MODEL, EMBEDDING_DIM
+
+EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+EMBEDDING_DIM = 384
+
+# Cargador perezoso — solo se carga cuando se usa
+_model = None
+
+
+def _get_model():
+    """Carga el modelo bajo demanda."""
+    global _model
+    if _model is None:
+        print(f"  🔄 Cargando modelo de embeddings: {EMBEDDING_MODEL}")
+        _model = SentenceTransformer(EMBEDDING_MODEL)
+    return _model
 
 
 def embed_texts(texts: List[str]) -> List[List[float]]:
     """
-    Genera embeddings para una lista de textos usando MiniMax API.
+    Genera embeddings para una lista de textos.
     
     Args:
         texts: Lista de textos a embeber
     
     Returns:
-        Lista de vectores de embedding (lista de floats)
+        Lista de vectores de embedding
     """
     if not texts:
         return []
     
-    url = f"{MINIMAX_BASE_URL}/embeddings"
+    model = _get_model()
+    embeddings = model.encode(texts, show_progress_bar=False)
     
-    headers = {
-        "Authorization": f"Bearer {MINIMAX_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    # MiniMax embedding API
-    payload = {
-        "model": EMBEDDING_MODEL,
-        "input": texts
-    }
-    
-    with httpx.Client(timeout=60.0) as client:
-        response = client.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        
-        data = response.json()
-        
-        # Extraer los embeddings de la respuesta
-        embeddings = []
-        for item in data.get("data", []):
-            embedding = item.get("embedding", [])
-            embeddings.append(embedding)
-        
-        return embeddings
+    # Convertir numpy arrays a listas de floats
+    return [emb.tolist() for emb in embeddings]
 
 
 def embed_query(query: str) -> List[float]:
     """
     Genera embedding para una query del usuario.
-    
-    Args:
-        query: Texto de la pregunta del usuario
-    
-    Returns:
-        Vector de embedding (lista de floats)
     """
     embeddings = embed_texts([query])
     return embeddings[0] if embeddings else []
 
 
 def check_embedding_dim(embedding: List[float]) -> bool:
-    """
-    Verifica que el embedding tiene la dimensión correcta.
-    """
+    """Verifica la dimensión del embedding."""
     return len(embedding) == EMBEDDING_DIM

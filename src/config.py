@@ -4,11 +4,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load .env file
-env_path = Path(__file__).parent.parent.parent / ".env"
+env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
 # Paths
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 DATA_RAW_DIR = DATA_DIR / "raw"
 DATA_PROCESSED_DIR = DATA_DIR / "processed"
@@ -32,4 +32,4 @@ INE_MUNICIPIO = os.getenv("INE_CODIGO_MUNICIPIO", "35020")  # Las Palmas de GC
 
 # Embedding model
 EMBEDDING_MODEL = "embo-01"
-EMBEDDING_DIM = 1536  # MiniMax embedding dimension
+EMBEDDING_DIM = 384  # sentence-transformers all-MiniLM-L6-v2
