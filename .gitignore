@@ -1,0 +1,27 @@
+# Environment
+.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Data (keep raw data, ignore processed)
+data/raw/
+data/processed/
+!data/.gitkeep
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credentials (never commit these)
+*.pem
+*.key
+secrets/
