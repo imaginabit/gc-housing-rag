@@ -13,8 +13,10 @@ requests==2.31.0
 pinecone-client==3.0.0
 httpx==0.27.0
 
-# Maps
+# Maps / Geocoding
 leaflet==0.0.1
+geopy==2.4.1
+shapely==2.0.2
 
 # Dev
 jupyter==1.0.0
