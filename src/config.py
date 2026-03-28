@@ -1,4 +1,5 @@
 """Configuración del proyecto GC Housing RAG."""
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -18,14 +19,40 @@ DATA_DIR.mkdir(exist_ok=True)
 DATA_RAW_DIR.mkdir(exist_ok=True)
 DATA_PROCESSED_DIR.mkdir(exist_ok=True)
 
-# API Keys
-MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY", "")
+
+def require_env(key: str) -> str:
+    """
+    Obtiene una variable de entorno requerida.
+
+    Args:
+        key: Nombre de la variable de entorno
+
+    Returns:
+        Valor de la variable
+
+    Raises:
+        ValueError: Si la variable no está definida
+    """
+    value = os.getenv(key)
+    if not value:
+        raise ValueError(
+            f"La variable de entorno '{key}' es requerida. Configura tu .env"
+        )
+    return value
+
+
+# Required API Keys (validadas con require_env)
+GROQ_API_KEY = require_env("GROQ_API_KEY")
+MINIMAX_API_KEY = require_env("MINIMAX_API_KEY")
 MINIMAX_BASE_URL = os.getenv("MINIMAX_BASE_URL", "https://api.minimax.chat/v1")
 
-# Pinecone
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
+# Pinecone (requerido)
+PINECONE_API_KEY = require_env("PINECONE_API_KEY")
 PINECONE_INDEX = os.getenv("PINECONE_INDEX", "gc-housing")
 PINECONE_ENV = os.getenv("PINECONE_ENV", "us-east-1")
+
+# CORS
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080").split(",")
 
 # INE
 INE_MUNICIPIO = os.getenv("INE_CODIGO_MUNICIPIO", "35020")  # Las Palmas de GC
@@ -33,3 +60,20 @@ INE_MUNICIPIO = os.getenv("INE_CODIGO_MUNICIPIO", "35020")  # Las Palmas de GC
 # Embedding model
 EMBEDDING_MODEL = "embo-01"
 EMBEDDING_DIM = 384  # sentence-transformers all-MiniLM-L6-v2
+
+# Barrios de Las Palmas de GC (13 barrios principales)
+BARRIOS_LPGC = [
+    "Vegueta",
+    "Triana",
+    "Mesa y López",
+    "Playa de las Canteras",
+    "La Isleta",
+    "San Juan",
+    "San Nicolás",
+    "Alameda",
+    "Cono Sur",
+    "Tamaraceite",
+    "La Paterca",
+    "Tenoya",
+    "Buena Vista",
+]
