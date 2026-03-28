@@ -143,31 +143,7 @@
             align-self: flex-start;
             border-bottom-left-radius: 4px;
         }
-        
-        .message.sources {
-            background: var(--bg-input);
-            font-size: 0.65rem;
-            color: var(--text-secondary);
-            white-space: pre-wrap;
-            line-height: 1.4;
-        }
-        
-        .sources-list {
-            list-style: none;
-            margin-top: 0.5rem;
-        }
-        
-        .sources-list li {
-            padding: 0.25rem 0;
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .sources-list .score {
-            color: var(--success);
-            font-weight: 500;
-        }
-        
+
         .chat-input-area {
             padding: 1rem 1.25rem;
             border-top: 1px solid var(--border);
@@ -467,17 +443,44 @@
             sendMessage();
         }
         
-        function addMessage(content, type = 'bot') {
+        function addMessage(content, type = 'bot', sources = null) {
             const msg = document.createElement('div');
             msg.className = `message ${type}`;
-            
+
             if (type === 'bot') {
-                // Texto plano de la respuesta del bot
-                msg.textContent = content;
+                // Texto de respuesta en texto plano
+                const answerDiv = document.createElement('div');
+                answerDiv.textContent = content;
+                msg.appendChild(answerDiv);
+
+                // Fuentes ocultas con enlace para mostrar
+                if (sources && sources.length > 0) {
+                    const toggleLink = document.createElement('a');
+                    toggleLink.href = '#';
+                    toggleLink.style.cssText = 'font-size:0.65rem; color:#8b98a5; text-decoration:none; cursor:pointer;';
+                    toggleLink.textContent = '📋 Fuentes: ' + sources.length + ' — ver';
+
+                    const sourcesDiv = document.createElement('div');
+                    sourcesDiv.style.display = 'none';
+                    sourcesDiv.style.cssText = 'font-size:0.65rem; color:#8b98a5; margin-top:0.3rem; padding-top:0.3rem; border-top:1px solid var(--border);';
+                    sourcesDiv.textContent = sources.map(s => '• ' + s.source + ' — ' + s.barrio).join(', ');
+
+                    toggleLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (sourcesDiv.style.display === 'none') {
+                            sourcesDiv.style.display = 'block';
+                            toggleLink.textContent = '📋 Fuentes: ' + sources.length + ' — ocultar';
+                        } else {
+                            sourcesDiv.style.display = 'none';
+                            toggleLink.textContent = '📋 Fuentes: ' + sources.length + ' — ver';
+                        }
+                    });
+
+                    msg.appendChild(toggleLink);
+                    msg.appendChild(sourcesDiv);
+                }
             } else {
-                // Sources: limpiar tags HTML y mostrar como texto
-                const cleaned = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-                msg.textContent = cleaned;
+                msg.textContent = content;
             }
             
             chatMessages.appendChild(msg);
@@ -527,32 +530,11 @@
                 
                 const data = await response.json();
                 
-                // Add bot response
-                addMessage(data.answer);
-                
-                // Add sources
-                if (data.sources && data.sources.length > 0) {
-                    // Crear mensaje oculto con las fuentes
-                    const sourcesId = 'sources-' + Date.now();
-                    const sourcesText = '📊 Fuentes consultadas:\n' +
-                        data.sources.map(s => `  • ${s.source} — ${s.barrio}`).join('\n');
-                    
-                    const msg = document.createElement('div');
-                    msg.className = 'message sources';
-                    msg.innerHTML = `
-                        <a href="#" onclick="toggleSources(this, '${sourcesId}', ${data.sources.length}); return false;">
-                            📋 Fuentes consultadas (${data.sources.length})
-                        </a>
-                        <pre id="${sourcesId}" style="display:none; font-size:0.65rem; color:#8b98a5; white-space:pre-wrap; margin:0.5rem 0 0 0; line-height:1.4;">${sourcesText}
-
-Enlaces:
-  • INE Padrón: https://www.ine.es
-  • Registro Turismo GC: https://www.turismo.grancanaria.com
-  • Contexto: datos del proyecto GC Housing</pre>
-                    `;
-                    chatMessages.appendChild(msg);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
+                // Add bot response con fuentes ocultas
+                const rawAnswer = data.answer || '';
+                // Eliminar el texto de fuentes que el LLM haya podido generar
+                const answerClean = rawAnswer.replace(/📋 Fuentes:[\s\S]*$/, '').trim();
+                addMessage(answerClean, 'bot', data.sources);
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -562,16 +544,6 @@ Enlaces:
             setLoading(false);
         }
         
-        function toggleSources(link, id, count) {
-            const pre = document.getElementById(id);
-            if (pre.style.display === 'none') {
-                pre.style.display = 'block';
-                link.textContent = '📋 Fuentes consultadas (' + count + ') — ocultar';
-            } else {
-                pre.style.display = 'none';
-                link.textContent = '📋 Fuentes consultadas (' + count + ')';
-            }
-        }
         
         async function askQuestion(question) {
             chatInput.value = question;
