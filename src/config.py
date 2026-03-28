@@ -52,14 +52,14 @@ PINECONE_INDEX = os.getenv("PINECONE_INDEX", "gc-housing")
 PINECONE_ENV = os.getenv("PINECONE_ENV", "us-east-1")
 
 # CORS
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
 # INE
 INE_MUNICIPIO = os.getenv("INE_CODIGO_MUNICIPIO", "35020")  # Las Palmas de GC
 
 # Embedding model
-EMBEDDING_MODEL = "embo-01"
-EMBEDDING_DIM = 384  # sentence-transformers all-MiniLM-L6-v2
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_DIM = 384
 
 # Barrios de Las Palmas de GC (13 barrios principales)
 BARRIOS_LPGC = [

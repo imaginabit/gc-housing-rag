@@ -43,7 +43,7 @@ def assign_barrios_to_turismo(limit: int = None) -> pd.DataFrame:
     print("=" * 60)
 
     # Cargar datos
-    csv_path = DATA_RAW_DIR / "turismo_lpgc_real.csv"
+    csv_path = DATA_RAW_DIR / "turismo_lpgc_real_geocoded.csv"
     df = pd.read_csv(csv_path)
 
     if limit:
