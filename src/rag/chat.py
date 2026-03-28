@@ -2,22 +2,21 @@
 Módulo de chat - Generación de respuestas con Groq LLM (gratis, rápido).
 
 Usa los resultados de Pinecone (contexto) + Groq LLM para
-generar respuestas a preguntas del usuario.
+generar respuestas a las preguntas del usuario.
 
 Modelos disponibles en Groq (gratis):
 - llama-3.3-70b-versatile (recomendado)
 - llama-3.1-8b-instant
 - mixtral-8x7b-32768
 """
+
 import groq
 from typing import List, Dict, Any, Optional
-import os
-from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
+from ..config import GROQ_API_KEY
 
 # Groq client
-groq_client = groq.Groq(api_key=os.getenv("GROQ_API_KEY", ""))
+groq_client = groq.Groq(api_key=GROQ_API_KEY)
 
 # Modelo de chat
 CHAT_MODEL = "llama-3.3-70b-versatile"
@@ -63,7 +62,7 @@ Incluye datos específicos cuando estén disponibles (números, porcentajes, añ
 def ask_question(
     question: str,
     context: List[Dict[str, Any]],
-    history: Optional[List[Dict[str, str]]] = None
+    history: Optional[List[Dict[str, str]]] = None,
 ) -> str:
     """
     Genera una respuesta a la pregunta del usuario usando Groq LLM.
@@ -82,10 +81,7 @@ def ask_question(
 
     try:
         response = groq_client.chat.completions.create(
-            model=CHAT_MODEL,
-            messages=messages,
-            temperature=0.3,
-            max_tokens=1024
+            model=CHAT_MODEL, messages=messages, temperature=0.3, max_tokens=1024
         )
 
         return response.choices[0].message.content
@@ -100,10 +96,7 @@ def format_map_context(context: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Formatea el contexto de Pinecone para usarlo en el mapa interactivo.
     """
-    result = {
-        "barrios": [],
-        "data_points": []
-    }
+    result = {"barrios": [], "data_points": []}
 
     seen_barrios = set()
 
@@ -114,10 +107,6 @@ def format_map_context(context: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         if barrio and barrio not in seen_barrios:
             seen_barrios.add(barrio)
-            result["barrios"].append({
-                "name": barrio,
-                "score": score,
-                "data": meta
-            })
+            result["barrios"].append({"name": barrio, "score": score, "data": meta})
 
     return result

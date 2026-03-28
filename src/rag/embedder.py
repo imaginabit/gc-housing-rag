@@ -4,11 +4,11 @@ Embeddings usando sentence-transformers (local, gratis).
 Usa el modelo 'all-MiniLM-L6-v2' que produce embeddings de 384 dims.
 No requiere API key — funciona 100% en local.
 """
+
 from sentence_transformers import SentenceTransformer
 from typing import List
 
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-EMBEDDING_DIM = 384
+from ..config import EMBEDDING_MODEL, EMBEDDING_DIM
 
 # Cargador perezoso — solo se carga cuando se usa
 _model = None
@@ -26,19 +26,19 @@ def _get_model():
 def embed_texts(texts: List[str]) -> List[List[float]]:
     """
     Genera embeddings para una lista de textos.
-    
+
     Args:
         texts: Lista de textos a embeber
-    
+
     Returns:
         Lista de vectores de embedding
     """
     if not texts:
         return []
-    
+
     model = _get_model()
     embeddings = model.encode(texts, show_progress_bar=False)
-    
+
     # Convertir numpy arrays a listas de floats
     return [emb.tolist() for emb in embeddings]
 
