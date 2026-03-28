@@ -7,7 +7,7 @@ Usa datos reales del ISTAC (Instituto Canario de Estadística) y Doorstep Analyt
 import pandas as pd
 from pathlib import Path
 from typing import List, Dict, Any
-from ..config import DATA_RAW_DIR, BARRIOS_LPGC
+from ..config import DATA_RAW_DIR
 
 
 def load_real_data() -> Dict[str, pd.DataFrame]:
