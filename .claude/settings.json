@@ -1,0 +1,13 @@
+{
+  "PreToolUse": [
+    {
+      "matcher": "Write|Edit",
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "File path: $TOOL_INPUT.file_path. If path matches \\.env$ or \\.env\\., return 'deny' because it contains API keys. Otherwise return 'approve'."
+        }
+      ]
+    }
+  ]
+}

@@ -25,3 +25,6 @@ Thumbs.db
 *.pem
 *.key
 secrets/
+
+# Engram AI agent memory
+.engram/
