@@ -48,6 +48,14 @@ def load_real_data() -> Dict[str, pd.DataFrame]:
         data["turismo"] = pd.read_csv(turismo_path)
         print(f"  ⚠️  Registro Turismo: {len(data['turismo'])} vv (sin desglose barrio)")
 
+    # Turismo con barrios asignados (nuevo - desde reverse geocoding)
+    turismo_barrios_path = DATA_RAW_DIR / "turismo_lpgc_with_barrios.csv"
+    if turismo_barrios_path.exists():
+        data["turismo_barrios"] = pd.read_csv(turismo_barrios_path)
+        # Contar coverage
+        with_barrio = data["turismo_barrios"]["barrio_asignado"].notna().sum()
+        print(f"  ✅ Turismo con barrios: {len(data['turismo_barrios'])} vv ({with_barrio} con barrio)")
+
     return data
 
 
@@ -328,6 +336,57 @@ def create_context_chunk() -> List[Dict[str, Any]]:
     return chunks
 
 
+def create_barrio_chunks(turismo_df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """Crea chunks con datos de viviendas por barrio."""
+    chunks = []
+
+    if "barrio_asignado" not in turismo_df.columns:
+        return chunks
+
+    # Agrupar por barrio
+    grouped = turismo_df.groupby("barrio_asignado")
+
+    for barrio, group in grouped:
+        if pd.isna(barrio) or barrio == "_U":
+            continue
+
+        num_viviendas = len(group)
+        plazas_total = group["plazas"].sum() if "plazas" in group.columns else 0
+
+        # Solo crear chunk si hay suficientes viviendas
+        if num_viviendas < 5:
+            continue
+
+        plazas_avg = plazas_total / num_viviendas if num_viviendas > 0 else 0
+
+        # Chunk por barrio
+        text = (
+            f"En el barrio de {barrio}, según el Registro de Turismo de Canarias, "
+            f"hay {num_viviendas:,} viviendas vacacionales registradas "
+            f"con un total de {int(plazas_total):,} plazas. "
+            f"Este barrio forma parte de Las Palmas de Gran Canaria y ha experimentado "
+            f"un crecimiento significativo en el sector del alquiler vacacional."
+        )
+
+        chunks.append(
+            {
+                "id": f"turismo_{barrio.lower().replace(' ', '_').replace('-', '_')}",
+                "text": text,
+                "metadata": {
+                    "source": "Registro Turismo Canarias (datos con barrios)",
+                    "barrio": barrio,
+                    "tipo": "viviendas_por_barrio",
+                    "num_viviendas": int(num_viviendas),
+                    "plazas_totales": int(plazas_total),
+                    "plazas_promedio": round(plazas_avg, 1),
+                    "text": text,
+                },
+            }
+        )
+
+    return chunks
+
+
 def create_all_chunks() -> List[Dict[str, Any]]:
     """Crea todos los chunks para indexar."""
     print("\n📝 Creando chunks con datos reales...")
@@ -357,6 +416,12 @@ def create_all_chunks() -> List[Dict[str, Any]]:
     chunks = create_context_chunk()
     all_chunks.extend(chunks)
     print(f"  Contexto: {len(chunks)} chunks")
+
+    #Chunks por barrio (desde reverse geocoding)
+    if "turismo_barrios" in data:
+        chunks = create_barrio_chunks(data["turismo_barrios"])
+        all_chunks.extend(chunks)
+        print(f"  Barrios: {len(chunks)} chunks")
 
     print(f"\n  ✅ Total: {len(all_chunks)} chunks")
     return all_chunks
