@@ -1,21 +1,20 @@
-# 🏘️ GC Housing RAG
+# Éxodo Vecinal
 
-**Chatbot con RAG + mapa interactivo** para visualizar el impacto de las viviendas vacacionales en los barrios de Las Palmas de Gran Canaria.
+**El mapa de la turistificación en Las Palmas de Gran Canaria.** Chatbot con RAG + mapa interactivo para visualizar el impacto de las viviendas vacacionales en los barrios.
 
 ## Stack
 
 - **Python 3.13** + FastAPI
 - **Pinecone** (vector DB) + **sentence-transformers** (embeddings local)
-- **Groq** (LLM gratis) + **MiniMax** (embeddings)
-- **Leaflet.js** (mapa interactivo, frontend vanilla)
+- **Groq** (LLM) + **Leaflet.js** (mapa interactivo, frontend vanilla)
 
 ## Arquitectura
 
 ```
 Frontend (mapa + chat) → FastAPI → Pinecone (RAG)
-                              ↓
-                        Groq LLM (chat)
-                              ↓
+                               ↓
+                         Groq LLM (chat)
+                               ↓
                sentence-transformers (embeddings)
 ```
 
@@ -25,7 +24,7 @@ Frontend (mapa + chat) → FastAPI → Pinecone (RAG)
 |--------|-----------|---------|
 | ISTAC | 75 meses (01/2019-03/2025), municipio LPGC | `data/raw/istac_viviendas_lpgc_pivot.csv` |
 | Doorstep (Airbnb) | 9,400 coords isla completa | `data/raw/doorstep_coordinates.csv` |
-| Registro Turismo GC | 5,144 vv con coords, sin desglose barrio | `data/raw/turismo_lpgc_real.csv` |
+| Registro Turismo GC | 5,144 vv, 90.7% con barrio asignado | `data/raw/turismo_lpgc_with_barrios.csv` |
 | INE Padrón | ⚠️ Sintético (INE bloquea acceso automático) | `data/raw/ine_population_processed.csv` |
 
 ## Endpoints
@@ -34,6 +33,8 @@ Frontend (mapa + chat) → FastAPI → Pinecone (RAG)
 - `GET /barrios` — Lista de barrios disponibles
 - `POST /query` — RAG query (embed → Pinecone → Groq → respuesta)
 - `GET /map-data` — Datos agregados: ISTAC, Airbnb coords, INE sintético
+- `GET /turismo-points` — Puntos de viviendas turísticas con barrios
+- `GET /barrios-polygons` — Polígonos GeoJSON de barrios con conteo de vv
 
 ## Setup
 
@@ -44,38 +45,27 @@ pip install -r requirements.txt
 
 # 2. Configurar .env
 cp .env.example .env
-# Editar con: GROQ_API_KEY, MINIMAX_API_KEY, PINECONE_API_KEY
+# Editar con: GROQ_API_KEY, PINECONE_API_KEY
 
-# 3. Descargar datos (opcional, ya hay datos en data/raw/)
-python -m src.ingest.istac_data
-
-# 4. Reindexar Pinecone (si cambiaron los datos)
+# 3. Reindexar Pinecone (si cambiaron los datos)
 python -m src.rag.pipeline
 
-# 5. Arrancar
+# 4. Arrancar
 uvicorn src.rag.api:app --reload --port 8000
 cd src/frontend && python -m http.server 8080
 ```
-
-## API Keys necesarias
-
-- `GROQ_API_KEY` — Groq (gratis, para chat)
-- `MINIMAX_API_KEY` — MiniMax (embeddings)
-- `PINECONE_API_KEY` — Pinecone (vector DB)
 
 ## Estado
 
 | Componente | Estado |
 |------------|--------|
-| Pipeline RAG | ✅ Funcional |
-| Datos ISTAC reales | ✅ 75 meses indexados |
-| Mapa Airbnb coords | ✅ 9,400 puntos disponibles |
-| INE por barrio | ⚠️ Sintético |
-| Frontend | ⚠️ Necesita actualizar para nuevos datos |
+| Pipeline RAG | ✅ 32 chunks indexados (ISTAC + barrios + Doorstep) |
+| Geocoding barrios | ✅ 90.7% cobertura (4,665/5,144 vv) |
+| Mapa interactivo | ✅ Heatmap + polígonos de barrios |
+| Chat RAG | ✅ Funcional con Groq |
 
 ## Próximos pasos
 
-1. **Mapa de calor Airbnb** — Renderizar 9,400 puntos de Doorstep en el mapa
-2. **Reverse geocoding** — Asignar barrio a cada vv del Registro Turismo con coords
-3. **Gráficos ISTAC** — Visualizar la serie de 75 meses (evolución temporal)
-4. **INE real** — Solicitar formalmente o buscar mirror en datos.gob.es
+1. **i18n** — Internacionalización (es/en)
+2. **Despliegue OVH** — Producción en servidor OVH
+3. **INE real** — Solicitar formalmente o buscar mirror en datos.gob.es
