@@ -8,7 +8,7 @@ Expone endpoints para:
 - GET /map-data — datos para el mapa
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -279,7 +279,7 @@ def get_turismo_points():
 
 
 @app.get("/barrios-polygons")
-def get_barrios_polygons():
+def get_barrios_polygons(response: Response):
     """Devuelve polígonos de barrios de LPGC con datos de viviendas."""
     barrios_path = DATA_RAW_DIR / "barrios_lpgc.json"
     turismo_path = DATA_RAW_DIR / "turismo_lpgc_with_barrios.csv"
@@ -309,7 +309,9 @@ def get_barrios_polygons():
         feat["properties"]["viviendas_count"] = count
         features.append(feat)
 
-    return {
+    result = {
         "type": "FeatureCollection",
         "features": features,
     }
+
+    return result
