@@ -3,15 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GC Housing — Mapa de la Turistificación en LPGC</title>
-    
+    <title>GC Housing — Mapa de la Turistificación en Las Palmas de Gran Canaria</title>
+    <meta name="description" content="Explora el impacto de las viviendas vacacionales en los barrios de Las Palmas de Gran Canaria. Mapa interactivo con datos del INE, ISTAC y Registro de Turismo de Canarias.">
+    <meta name="keywords" content="Las Palmas, Gran Canaria, viviendas vacacionales, turistificación, Airbnb, alquiler turístico, barrios, mapa, datos abiertos">
+    <meta name="author" content="GC Housing">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://gchousing.es/">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="GC Housing — Mapa de la Turistificación en Las Palmas GC">
+    <meta property="og:description" content="Mapa interactivo del impacto de las viviendas vacacionales en los barrios de Las Palmas de Gran Canaria. Datos reales del INE, ISTAC y Registro de Turismo.">
+    <meta property="og:url" content="https://gchousing.es/">
+    <meta property="og:site_name" content="GC Housing">
+    <meta property="og:locale" content="es_ES">
+    <meta property="og:image" content="https://gchousing.es/og-image.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="GC Housing — Mapa de la Turistificación en Las Palmas GC">
+    <meta name="twitter:description" content="Mapa interactivo del impacto de las viviendas vacacionales en los barrios de Las Palmas de Gran Canaria.">
+    <meta name="twitter:image" content="https://gchousing.es/og-image.png">
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.css" />
-    
+
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <style>
         :root {
             --bg-dark: #0f1419;
@@ -24,13 +43,13 @@
             --border: #2f3842;
             --success: #2ecc71;
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-dark);
@@ -39,7 +58,7 @@
             display: flex;
             flex-direction: column;
         }
-        
+
         /* HEADER */
         header {
             background: var(--bg-card);
@@ -50,38 +69,38 @@
             justify-content: space-between;
             flex-shrink: 0;
         }
-        
+
         .logo {
             display: flex;
             align-items: center;
             gap: 0.75rem;
         }
-        
+
         .logo-icon {
             font-size: 1.5rem;
         }
-        
+
         .logo h1 {
             font-size: 1.1rem;
             font-weight: 600;
         }
-        
+
         .logo span {
             color: var(--accent);
         }
-        
+
         .tagline {
             font-size: 0.8rem;
             color: var(--text-secondary);
         }
-        
+
         /* MAIN LAYOUT */
         main {
             flex: 1;
             display: flex;
             overflow: hidden;
         }
-        
+
         /* SIDEBAR */
         .sidebar {
             width: 400px;
@@ -91,30 +110,67 @@
             flex-direction: column;
             flex-shrink: 0;
         }
-        
+
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 0.65rem 0.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .sidebar-tab:hover {
+            color: var(--text-primary);
+            background: var(--bg-input);
+        }
+
+        .sidebar-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
         .chat-section {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
-        
+
         .chat-header {
             padding: 1rem 1.25rem;
             border-bottom: 1px solid var(--border);
         }
-        
+
         .chat-header h2 {
             font-size: 0.9rem;
             font-weight: 600;
             margin-bottom: 0.25rem;
         }
-        
+
         .chat-header p {
             font-size: 0.75rem;
             color: var(--text-secondary);
         }
-        
+
         .chat-messages {
             flex: 1;
             overflow-y: auto;
@@ -123,7 +179,7 @@
             flex-direction: column;
             gap: 1rem;
         }
-        
+
         .message {
             padding: 0.75rem 1rem;
             border-radius: 12px;
@@ -131,14 +187,14 @@
             line-height: 1.5;
             max-width: 90%;
         }
-        
+
         .message.user {
             background: var(--accent);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 4px;
         }
-        
+
         .message.bot {
             background: var(--bg-input);
             align-self: flex-start;
@@ -149,12 +205,12 @@
             padding: 1rem 1.25rem;
             border-top: 1px solid var(--border);
         }
-        
+
         .chat-input-wrapper {
             display: flex;
             gap: 0.5rem;
         }
-        
+
         .chat-input {
             flex: 1;
             background: var(--bg-input);
@@ -165,16 +221,16 @@
             font-size: 0.875rem;
             font-family: inherit;
         }
-        
+
         .chat-input:focus {
             outline: none;
             border-color: var(--accent);
         }
-        
+
         .chat-input::placeholder {
             color: var(--text-secondary);
         }
-        
+
         .send-btn {
             background: var(--accent);
             border: none;
@@ -186,16 +242,16 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-        
+
         .send-btn:hover {
             background: var(--accent-light);
         }
-        
+
         .send-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        
+
         /* STATS BAR */
         .stats-bar {
             padding: 1rem 1.25rem;
@@ -204,27 +260,27 @@
             grid-template-columns: 1fr 1fr;
             gap: 0.75rem;
         }
-        
+
         .stat-card {
             background: var(--bg-input);
             border-radius: 8px;
             padding: 0.75rem;
             text-align: center;
         }
-        
+
         .stat-value {
             font-size: 1.25rem;
             font-weight: 700;
             color: var(--accent);
         }
-        
+
         .stat-label {
             font-size: 0.65rem;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-        
+
         /* MAP */
         #map {
             flex: 1;
@@ -241,7 +297,7 @@
         .leaflet-container {
             background: #0a0e12;
         }
-        
+
         /* Loading state */
         .loading {
             display: inline-block;
@@ -252,11 +308,11 @@
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
-        
+
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        
+
         /* Suggested questions */
         .suggestions {
             padding: 0.75rem 1.25rem;
@@ -265,7 +321,7 @@
             flex-wrap: wrap;
             gap: 0.5rem;
         }
-        
+
         .suggestion-btn {
             background: var(--bg-input);
             border: 1px solid var(--border);
@@ -276,23 +332,42 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        
+
         .suggestion-btn:hover {
             background: var(--border);
             color: var(--text-primary);
         }
-        
+
+        /* Map control buttons */
+        .map-toggle-btn {
+            background: #2d3748;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .map-toggle-btn.active {
+            background: #e63946;
+        }
+
         /* Responsive */
         @media (max-width: 900px) {
             main {
                 flex-direction: column;
             }
-            
+
             .sidebar {
                 width: 100%;
                 height: 50%;
             }
-            
+
             #map {
                 height: 50%;
             }
@@ -309,24 +384,30 @@
             </div>
         </div>
     </header>
-    
+
     <main>
         <aside class="sidebar">
-            <div class="stats-section" style="padding: 15px; border-bottom: 1px solid var(--border);">
-                <h3 style="margin: 0 0 10px 0; font-size: 14px;">📊 Viviendas por Barrio</h3>
-                <div id="barriosTable" style="max-height: 250px; overflow-y: auto; font-size: 11px;">
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" data-tab="chat" onclick="switchTab('chat')">💬 Chat</button>
+                <button class="sidebar-tab" data-tab="barrios" onclick="switchTab('barrios')">📊 Barrios</button>
+            </div>
+
+            <div id="tab-barrios" class="tab-panel" style="display: none;">
+                <div id="barriosTable" style="flex: 1; overflow-y: auto; font-size: 11px; padding: 0.75rem 1rem;">
                     <div style="color: var(--text-secondary);">Cargando...</div>
                 </div>
             </div>
+
+            <div id="tab-chat" class="tab-panel">
             <div class="chat-section">
                 <div class="chat-header">
                     <h2>💬 Pregúntame sobre el impacto turístico</h2>
                     <p>Datos: INE (población), Registro Turismo GC</p>
                 </div>
-                
+
                 <div class="chat-messages" id="chatMessages">
                     <div class="message bot">
-                        👋 ¡Hola! Soy el asistente de datos de GC Housing. 
+                        👋 ¡Hola! Soy el asistente de datos de GC Housing.
                         Puedo responder preguntas sobre el impacto de las viviendas turísticas en los barrios de Las Palmas de Gran Canaria.
                         <br><br>
                         Prueba algo como:<br>
@@ -334,28 +415,28 @@
                         <em>"¿Cuántas viviendas turísticas hay en Vegueta?"</em>
                     </div>
                 </div>
-                
+
                 <div class="suggestions">
                     <button class="suggestion-btn" onclick="askSuggestion(this)">🏘️ Barrios más afectados</button>
                     <button class="suggestion-btn" onclick="askSuggestion(this)">📉 Pérdida de población</button>
                     <button class="suggestion-btn" onclick="askSuggestion(this)">🏠 Viviendas turísticas</button>
                     <button class="suggestion-btn" onclick="askSuggestion(this)">⚖️ Ratio turismo/habitantes</button>
                 </div>
-                
+
                 <div class="chat-input-area">
                     <div class="chat-input-wrapper">
-                        <input 
-                            type="text" 
-                            id="chatInput" 
-                            class="chat-input" 
+                        <input
+                            type="text"
+                            id="chatInput"
+                            class="chat-input"
                             placeholder="Escribe tu pregunta..."
                             onkeydown="handleKeyDown(event)"
                         >
-                        <button class="send-btn" id="sendBtn" onclick="sendMessage()">Enviar</button>
+                        <button class="send-btn" id="sendBtn" onclick="window.sendMessage()">Enviar</button>
                     </div>
                 </div>
             </div>
-            
+
             <div class="stats-bar">
                 <div class="stat-card">
                     <div class="stat-value" id="statBarrios">—</div>
@@ -366,11 +447,13 @@
                     <div class="stat-label">Viviendas turísticas</div>
                 </div>
             </div>
+            </div>
+            </div>
         </aside>
-        
+
         <div id="map"></div>
     </main>
-    
+
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
@@ -380,34 +463,205 @@
         // CONFIG
         // ============================================
         const API_BASE = 'http://localhost:8000';
-        
-        // Coordenadas de LPGC
         const LPGC_CENTER = [28.1235, -15.4361];
         const DEFAULT_ZOOM = 13;
-        
+
         // ============================================
-        // MAP
+        // SHARED UTILS
+        // ============================================
+
+        /**
+         * Escala de color para viviendas turísticas (7 niveles).
+         * @param {number} count - número de viviendas
+         * @param {number} maxCount - valor máximo para normalizar
+         * @returns {string} color hex
+         */
+        function getBarrioColor(count, maxCount) {
+            if (!count || count === 0 || maxCount === 0) return '#e0e0e0';
+            const ratio = count / maxCount;
+            if (ratio < 0.1) return '#b3d9ff';
+            if (ratio < 0.25) return '#66b3ff';
+            if (ratio < 0.4) return '#00cc99';
+            if (ratio < 0.55) return '#f1c40f';
+            if (ratio < 0.7) return '#ff9933';
+            if (ratio < 0.85) return '#e74c3c';
+            return '#8b0000';
+        }
+
+        // ============================================
+        // MAP INITIALIZATION
         // ============================================
         const map = L.map('map', {
             center: LPGC_CENTER,
             zoom: DEFAULT_ZOOM,
             zoomControl: true
         });
-        
-        // Dark tile layer
+
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '© OpenStreetMap contributors © CARTO',
             maxZoom: 19
         }).addTo(map);
-        
-        // Los barrios ahora se cargan desde los polígonos (toggle Barrios)
 
         // ============================================
-        // TURISMO HOUSING HEATMAP
+        // LAYER STATE
         // ============================================
         let heatmapLayer = null;
         let heatmapVisible = false;
+        let barriosLayer = null;
+        let barriosVisible = true;  // auto-load on init
+        let barriosData = null;     // cache: single fetch for polygons + table
 
+        // ============================================
+        // CHAT GLOBALS (single source of truth)
+        // ============================================
+        window.chatInput = document.getElementById('chatInput');
+        window.chatMessages = document.getElementById('chatMessages');
+        window.isLoading = false;
+
+        // ============================================
+        // SET LOADING (single definition)
+        // ============================================
+        window.setLoading = function(loading) {
+            window.isLoading = loading;
+            const sendBtn = document.getElementById('sendBtn');
+            if (sendBtn) sendBtn.disabled = loading;
+            window.chatInput.disabled = loading;
+
+            if (loading) {
+                const loader = document.createElement('div');
+                loader.id = 'loading-msg';
+                loader.className = 'message bot';
+                loader.innerHTML = '<span class="loading"></span> Buscando en los datos...';
+                window.chatMessages.appendChild(loader);
+                window.chatMessages.scrollTop = window.chatMessages.scrollHeight;
+            } else {
+                const loader = document.getElementById('loading-msg');
+                if (loader) loader.remove();
+            }
+        };
+
+        // ============================================
+        // BARRIOS DATA (single fetch, cached)
+        // ============================================
+        async function loadBarriosData() {
+            if (barriosData) return barriosData;
+
+            try {
+                const response = await fetch(`${API_BASE}/barrios-polygons`);
+                if (!response.ok) return null;
+
+                const data = await response.json();
+                if (!data.features || data.features.length === 0) return null;
+
+                barriosData = data;
+                return data;
+            } catch (e) {
+                console.error('Error cargando datos de barrios:', e);
+                return null;
+            }
+        }
+
+        // ============================================
+        // BARRIOS TABLE (reuses cached data)
+        // ============================================
+        async function renderBarriosTable() {
+            const data = await loadBarriosData();
+            if (!data) return;
+
+            const sorted = data.features
+                .map(f => ({
+                    nombre: f.properties.NUCL_DS_NOMBRE,
+                    count: f.properties.viviendas_count || 0
+                }))
+                .sort((a, b) => b.count - a.count);
+
+            const maxCount = Math.max(...sorted.map(s => s.count));
+
+            const html = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <tr style="background: var(--bg-input);">
+                        <th style="padding: 6px; text-align: left;">Barrio</th>
+                        <th style="padding: 6px; text-align: right;">VV</th>
+                        <th style="padding: 6px;">Color</th>
+                    </tr>
+                    ${sorted.slice(0, 30).map(s => `
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 5px 6px;">${s.nombre}</td>
+                            <td style="padding: 5px 6px; text-align: right; font-weight: 600;">${s.count}</td>
+                            <td style="padding: 5px 6px;">
+                                <span style="display: inline-block; width: 16px; height: 12px; background: ${getBarrioColor(s.count, maxCount)}; border-radius: 2px;"></span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+            document.getElementById('barriosTable').innerHTML = html;
+        }
+
+        // ============================================
+        // BARRIOS POLYGONS (reuses cached data)
+        // ============================================
+        async function loadBarriosPolygons() {
+            const data = await loadBarriosData();
+            if (!data) return;
+
+            const maxCount = Math.max(...data.features.map(f => f.properties.viviendas_count || 0));
+
+            barriosLayer = L.geoJSON(data, {
+                style: function(feature) {
+                    const count = feature.properties.viviendas_count || 0;
+                    return {
+                        color: '#fff',
+                        weight: 1.5,
+                        fillColor: getBarrioColor(count, maxCount),
+                        fillOpacity: 0.5
+                    };
+                },
+                onEachFeature: function(feature, layer) {
+                    const nombre = feature.properties.NUCL_DS_NOMBRE || 'Barrio';
+                    const count = feature.properties.viviendas_count || 0;
+                    const btnId = 'btn-consultar-' + nombre.replace(/\s/g, '');
+
+                    const popupContent = `
+                        <div style="color: #333; min-width: 180px;">
+                            <strong style="font-size: 14px;">${nombre}</strong>
+                            <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;">
+                            <div style="font-size: 13px;">
+                                <div><strong>Viviendas turísticas:</strong> ${count}</div>
+                            </div>
+                            <button id="${btnId}" style="margin-top: 10px; padding: 6px 12px; background: #e63946; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                💬 Consultar
+                            </button>
+                        </div>
+                    `;
+
+                    layer.bindPopup(popupContent);
+
+                    layer.on('popupopen', function() {
+                        const btn = document.getElementById(btnId);
+                        if (btn) {
+                            btn.onclick = function() {
+                                window.chatInput.value = 'Dame datos sobre ' + nombre;
+                                window.sendMessage();
+                            };
+                        }
+                    });
+
+                    layer.on('mouseover', function() {
+                        this.setStyle({weight: 3, fillOpacity: 0.7});
+                    });
+                    layer.on('mouseout', function() {
+                        this.setStyle({weight: 1.5, fillOpacity: 0.5});
+                    });
+                }
+            }).addTo(map);
+
+            console.log(`Barrios polygons: ${data.features.length} features`);
+        }
+
+        // ============================================
+        // HEATMAP
+        // ============================================
         async function loadTurismoHeatmap() {
             try {
                 const response = await fetch(`${API_BASE}/turismo-points`);
@@ -416,7 +670,6 @@
                 const data = await response.json();
                 if (!data.points || data.points.length === 0) return;
 
-                // Create heatmap with [lat, lng, intensity]
                 const heatPoints = data.points.map(p => [p.lat, p.lng, 0.5]);
 
                 heatmapLayer = L.heatLayer(heatPoints, {
@@ -440,197 +693,64 @@
             }
         }
 
-        // Add toggle button
-        const heatmapBtn = L.control({position: 'topright'});
-        heatmapBtn.onAdd = function() {
-            const div = L.DomUtil.create('div', 'heatmap-toggle');
-            const btn = document.createElement('button');
-            btn.textContent = '🔥 Heatmap ON';
-            btn.onclick = function() { toggleHeatmap(); };
-            btn.style.cssText = 'background: #e63946; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.3);';
-            div.appendChild(btn);
+        // ============================================
+        // MAP CONTROLS
+        // ============================================
+        const controlsDiv = L.control({position: 'topright'});
+        controlsDiv.onAdd = function() {
+            const div = L.DomUtil.create('div');
+
+            // Heatmap toggle
+            const heatBtn = document.createElement('button');
+            heatBtn.className = 'map-toggle-btn active';
+            heatBtn.id = 'btnHeatmap';
+            heatBtn.textContent = '🔥 Heatmap ON';
+            heatBtn.onclick = function() { window.toggleHeatmap(); };
+            div.appendChild(heatBtn);
+
+            // Barrios toggle
+            const barriosBtn = document.createElement('button');
+            barriosBtn.className = 'map-toggle-btn active';
+            barriosBtn.id = 'btnBarrios';
+            barriosBtn.textContent = '🏛️ Barrios ON';
+            barriosBtn.onclick = function() { window.toggleBarrios(); };
+            div.appendChild(barriosBtn);
+
             return div;
         };
-        heatmapBtn.addTo(map);
+        controlsDiv.addTo(map);
 
         window.toggleHeatmap = function() {
-            const btn = document.querySelector('.heatmap-toggle button');
+            const btn = document.getElementById('btnHeatmap');
             if (heatmapVisible) {
                 map.removeLayer(heatmapLayer);
                 heatmapVisible = false;
-                if (btn) btn.textContent = '🔥 Heatmap OFF';
+                if (btn) { btn.textContent = '🔥 Heatmap OFF'; btn.classList.remove('active'); }
             } else {
                 if (!heatmapLayer) loadTurismoHeatmap();
                 else heatmapLayer.addTo(map);
                 heatmapVisible = true;
-                if (btn) btn.textContent = '🔥 Heatmap ON';
+                if (btn) { btn.textContent = '🔥 Heatmap ON'; btn.classList.add('active'); }
             }
         };
 
-        // Load polygons on init (auto-show)
-        loadBarriosPolygons();
-        barriosVisible = true;
-
-        // Load barrios table
-        async function loadBarriosTable() {
-            try {
-                const response = await fetch(`${API_BASE}/barrios-polygons`);
-                if (!response.ok) return;
-                const data = await response.json();
-                if (!data.features) return;
-
-                // Sort by count
-                const sorted = data.features
-                    .map(f => ({ nombre: f.properties.NUCL_DS_NOMBRE, count: f.properties.viviendas_count || 0 }))
-                    .sort((a, b) => b.count - a.count);
-
-                const maxCount = Math.max(...sorted.map(s => s.count));
-
-                // Color function
-                function getColor(count) {
-                    if (!count) return '#e0e0e0';
-                    const ratio = count / maxCount;
-                    if (ratio < 0.1) return '#b3d9ff';
-                    if (ratio < 0.25) return '#66b3ff';
-                    if (ratio < 0.4) return '#00cc99';
-                    if (ratio < 0.55) return '#f1c40f';
-                    if (ratio < 0.7) return '#ff9933';
-                    if (ratio < 0.85) return '#e74c3c';
-                    return '#8b0000';
-                }
-
-                const html = `
-                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                        <tr style="background: var(--bg-input);">
-                            <th style="padding: 6px; text-align: left;">Barrio</th>
-                            <th style="padding: 6px; text-align: right;">VV</th>
-                            <th style="padding: 6px;">Color</th>
-                        </tr>
-                        ${sorted.slice(0, 30).map(s => `
-                            <tr style="border-bottom: 1px solid var(--border);">
-                                <td style="padding: 5px 6px;">${s.nombre}</td>
-                                <td style="padding: 5px 6px; text-align: right; font-weight: 600;">${s.count}</td>
-                                <td style="padding: 5px 6px;">
-                                    <span style="display: inline-block; width: 16px; height: 12px; background: ${getColor(s.count)}; border-radius: 2px;"></span>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </table>
-                `;
-                document.getElementById('barriosTable').innerHTML = html;
-            } catch (e) {
-                console.error('Error loading table:', e);
-            }
-        }
-        loadBarriosTable();
-
-        // No auto-load heatmap - user toggles manually
-
-        // ============================================
-        // BARRIOS POLYGONS
-        // ============================================
-        let barriosLayer = null;
-
-        async function loadBarriosPolygons() {
-            try {
-                const response = await fetch(`${API_BASE}/barrios-polygons`);
-                if (!response.ok) return;
-
-                const data = await response.json();
-                if (!data.features || data.features.length === 0) return;
-
-                // Get max count for color scaling
-                const maxCount = Math.max(...data.features.map(f => f.properties.viviendas_count || 0));
-
-                // Color scale function (blue -> yellow -> red)
-                // 7-level color scale (white -> blue -> green -> yellow -> orange -> red -> dark red)
-                function getColor(count) {
-                    if (!count || count === 0) return '#e0e0e0';
-                    const ratio = count / maxCount;
-                    if (ratio === 0) return '#e0e0e0';
-                    if (ratio < 0.1) return '#b3d9ff';
-                    if (ratio < 0.25) return '#66b3ff';
-                    if (ratio < 0.4) return '#00cc99';
-                    if (ratio < 0.55) return '#f1c40f';
-                    if (ratio < 0.7) return '#ff9933';
-                    if (ratio < 0.85) return '#e74c3c';
-                    return '#8b0000';
-                }
-
-                barriosLayer = L.geoJSON(data, {
-                    style: function(feature) {
-                        const count = feature.properties.viviendas_count || 0;
-                        return {
-                            color: '#fff',
-                            weight: 1.5,
-                            fillColor: getColor(count),
-                            fillOpacity: 0.5
-                        };
-                    },
-                    onEachFeature: function(feature, layer) {
-                        const nombre = feature.properties.NUCL_DS_NOMBRE || 'Barrio';
-                        const count = feature.properties.viviendas_count || 0;
-
-                        const btn = document.createElement('button');
-                        btn.textContent = '💬 Consultar';
-                        btn.style.cssText = 'margin-top: 10px; padding: 6px 12px; background: #e63946; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;';
-                        btn.onclick = function() {
-                            const question = 'Dame datos sobre ' + nombre;
-                            chatInput.value = question;
-                            sendMessage();
-                        };
-
-                        const popupDiv = document.createElement('div');
-                        popupDiv.style.cssText = 'color: #333; min-width: 180px;';
-                        popupDiv.innerHTML = `<strong style="font-size: 14px;">${nombre}</strong><hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;"><div style="font-size: 13px;"><div><strong>Viviendas turísticas:</strong> ${count}</div></div>`;
-                        popupDiv.appendChild(btn);
-
-                        layer.bindPopup(popupDiv);
-                        layer.on('mouseover', function() {
-                            this.setStyle({weight: 3, fillOpacity: 0.7});
-                        });
-                        layer.on('mouseout', function() {
-                            this.setStyle({weight: 1.5, fillOpacity: 0.5});
-                        });
-                    }
-                }).addTo(map);
-
-                console.log(`Barrios polygons: ${data.features.length} features`);
-
-            } catch (e) {
-                console.error('Error cargando polígonos:', e);
-            }
-        }
-
-        // Add toggle for polygons
-        const polyBtn = L.control({position: 'topright'});
-        polyBtn.onAdd = function() {
-            const div = L.DomUtil.create('div', 'poly-toggle');
-            const btn = document.createElement('button');
-            btn.textContent = '🏛️ Barrios OFF';
-            btn.onclick = function() { toggleBarrios(); };
-            btn.style.cssText = 'background: #2d3748; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.3); margin-left: 5px;';
-            div.appendChild(btn);
-            return div;
-        };
-        polyBtn.addTo(map);
-
-        let barriosVisible = false;
         window.toggleBarrios = function() {
-            const btn = document.querySelector('.poly-toggle button');
+            const btn = document.getElementById('btnBarrios');
             if (barriosVisible) {
                 map.removeLayer(barriosLayer);
                 barriosVisible = false;
-                if (btn) btn.textContent = '🏛️ Barrios OFF';
+                if (btn) { btn.textContent = '🏛️ Barrios OFF'; btn.classList.remove('active'); }
             } else {
                 if (!barriosLayer) loadBarriosPolygons();
                 else barriosLayer.addTo(map);
                 barriosVisible = true;
-                if (btn) btn.textContent = '🏛️ Barrios ON';
+                if (btn) { btn.textContent = '🏛️ Barrios ON'; btn.classList.add('active'); }
             }
         };
 
-        // Leyenda de barrios
+        // ============================================
+        // LEGEND
+        // ============================================
         const legend = L.control({position: 'bottomright'});
         legend.onAdd = function() {
             const div = L.DomUtil.create('div', 'legend');
@@ -669,38 +789,30 @@
         legend.addTo(map);
 
         // ============================================
-        // CHAT
+        // CHAT FUNCTIONS
         // ============================================
-        const chatMessages = document.getElementById('chatMessages');
-        const chatInput = document.getElementById('chatInput');
-        const sendBtn = document.getElementById('sendBtn');
-        
-        let isLoading = false;
-        
         function handleKeyDown(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage();
+                window.sendMessage();
             }
         }
-        
+
         function askSuggestion(btn) {
             const text = btn.textContent;
-            chatInput.value = text.replace(/^[^\w]+/, '');
-            sendMessage();
+            window.chatInput.value = text.replace(/^[^\w]+/, '');
+            window.sendMessage();
         }
-        
+
         function addMessage(content, type = 'bot', sources = null) {
             const msg = document.createElement('div');
             msg.className = `message ${type}`;
 
             if (type === 'bot') {
-                // Texto de respuesta en texto plano
                 const answerDiv = document.createElement('div');
                 answerDiv.textContent = content;
                 msg.appendChild(answerDiv);
 
-                // Fuentes ocultas con enlace para mostrar
                 if (sources && sources.length > 0) {
                     const toggleLink = document.createElement('a');
                     toggleLink.href = '#';
@@ -729,99 +841,78 @@
             } else {
                 msg.textContent = content;
             }
-            
-            chatMessages.appendChild(msg);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            window.chatMessages.appendChild(msg);
+            window.chatMessages.scrollTop = window.chatMessages.scrollHeight;
         }
-        
-        function setLoading(loading) {
-            isLoading = loading;
-            sendBtn.disabled = loading;
-            chatInput.disabled = loading;
-            
-            if (loading) {
-                const loader = document.createElement('div');
-                loader.id = 'loading-msg';
-                loader.className = 'message bot';
-                loader.innerHTML = '<span class="loading"></span> Buscando en los datos...';
-                chatMessages.appendChild(loader);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            } else {
-                const loader = document.getElementById('loading-msg');
-                if (loader) loader.remove();
-            }
-        }
-        
-        async function sendMessage() {
-            const question = chatInput.value.trim();
-            if (!question || isLoading) return;
-            
-            // Add user message
+
+        window.sendMessage = async function() {
+            const question = window.chatInput.value.trim();
+            if (!question || window.isLoading) return;
+
             addMessage(question, 'user');
-            chatInput.value = '';
-            
-            // Show loading
-            setLoading(true);
-            
+            window.chatInput.value = '';
+            window.setLoading(true);
+
             try {
                 const response = await fetch(`${API_BASE}/query`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         question: question,
                         top_k: 10
                     })
                 });
-                
+
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
+
                 const data = await response.json();
-                
-                // Add bot response con fuentes ocultas
                 const rawAnswer = data.answer || '';
-                // Eliminar el texto de fuentes que el LLM haya podido generar
                 const answerClean = rawAnswer.replace(/📋 Fuentes:[\s\S]*$/, '').trim();
                 addMessage(answerClean, 'bot', data.sources);
-                
+
             } catch (error) {
                 console.error('Error:', error);
                 addMessage(`❌ Error al conectar con el servidor. Asegúrate de que la API está corriendo en ${API_BASE}`);
             }
-            
-            setLoading(false);
-        }
-        
-        
+
+            window.setLoading(false);
+        };
+
         window.askQuestion = async function(question) {
-            chatInput.value = question;
-            sendMessage();
-        }
-        
+            window.chatInput.value = question;
+            window.sendMessage();
+        };
+
         // ============================================
-        // LOAD STATS ON START
+        // STATS
         // ============================================
         async function loadStats() {
             try {
                 const response = await fetch(`${API_BASE}/map-data`);
                 if (!response.ok) return;
-                
+
                 const data = await response.json();
-                
-                // Update stats
+
                 const numBarrios = Object.keys(data.poblacion?.by_barrio || {}).length;
                 const numVT = Object.values(data.turismo?.by_barrio || {})
                     .reduce((sum, b) => sum + b.viviendas, 0);
-                
+
                 document.getElementById('statBarrios').textContent = numBarrios || '—';
                 document.getElementById('statVT').textContent = numVT || '—';
-                
+
             } catch (error) {
                 console.log('API no disponible todavía');
             }
         }
-        
-        // Try to load stats
+
+        // ============================================
+        // INIT
+        // ============================================
+        loadBarriosPolygons();
+        renderBarriosTable();
         loadStats();
+        // Heatmap: user toggles manually
     </script>
 </body>
 </html>

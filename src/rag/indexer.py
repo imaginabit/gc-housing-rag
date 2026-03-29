@@ -18,7 +18,8 @@ def get_pinecone_client() -> Pinecone:
 
 def create_index_if_not_exists(dimension: int = None):
     """
-    Crea/recrea el índice en Pinecone con la dimensión correcta.
+    Crea el índice en Pinecone si no existe.
+    NO borra el índice existente — usa upsert para actualizar datos.
     """
     from ..config import EMBEDDING_DIM
 
@@ -27,10 +28,9 @@ def create_index_if_not_exists(dimension: int = None):
     pc = get_pinecone_client()
     index_name = PINECONE_INDEX
 
-    # Delete if exists (to recreate with correct dimension)
     if index_name in pc.list_indexes().names():
-        print(f"  🗑️ Borrando índice existente '{index_name}'...")
-        pc.delete_index(index_name)
+        print(f"  ℹ️ Índice '{index_name}' ya existe, reutilizando")
+        return
 
     print(f"  Creando índice '{index_name}' (dim={dim})...")
     pc.create_index(

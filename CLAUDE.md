@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **GC Housing RAG** — Chatbot con RAG + mapa interactivo para visualizar el impacto de las viviendas vacacionales en los barrios de Las Palmas de Gran Canaria.
 
-- **Stack**: FastAPI + Pinecone + MiniMax embeddings + Leaflet.js
+- **Stack**: FastAPI + Pinecone + sentence-transformers (local) + Groq LLM + Leaflet.js
 - **Purpose**: Analizar turistificación en LPGC con datos de INE (población) y Registro Turismo Canarias
 
 ## Commands
@@ -105,8 +105,7 @@ data/
 ## Configuration
 
 Required environment variables (`.env`):
-- `MINIMAX_API_KEY` — MiniMax API for embeddings
-- `MINIMAX_BASE_URL` — MiniMax endpoint
+- `GROQ_API_KEY` — Groq API for LLM chat (free)
 - `PINECONE_API_KEY` — Pinecone vector DB
 - `PINECONE_INDEX` — Index name (default: gc-housing)
 - `INE_CODIGO_MUNICIPIO` — INE municipality code (default: 35020 = Las Palmas GC)

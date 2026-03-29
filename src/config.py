@@ -1,6 +1,7 @@
 """Configuración del proyecto GC Housing RAG."""
 
 import os
+import warnings
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -20,44 +21,44 @@ DATA_RAW_DIR.mkdir(exist_ok=True)
 DATA_PROCESSED_DIR.mkdir(exist_ok=True)
 
 
-def require_env(key: str) -> str:
+def get_env(key: str, default: str = None, required: bool = False) -> str:
     """
-    Obtiene una variable de entorno requerida.
+    Obtiene una variable de entorno con advertencia si falta.
 
     Args:
         key: Nombre de la variable de entorno
+        default: Valor por defecto si no existe
+        required: Si True, lanza ValueError
 
     Returns:
-        Valor de la variable
-
-    Raises:
-        ValueError: Si la variable no está definida
+        Valor de la variable o default
     """
-    value = os.getenv(key)
-    if not value:
-        raise ValueError(
-            f"La variable de entorno '{key}' es requerida. Configura tu .env"
+    value = os.getenv(key, default)
+    if required and not value:
+        warnings.warn(
+            f"La variable de entorno '{key}' no está configurada. "
+            f"Algunas funcionalidades no estarán disponibles.",
+            stacklevel=2,
         )
-    return value
+        return ""
+    return value or ""
 
 
-# Required API Keys (validadas con require_env)
-GROQ_API_KEY = require_env("GROQ_API_KEY")
-MINIMAX_API_KEY = require_env("MINIMAX_API_KEY")
-MINIMAX_BASE_URL = os.getenv("MINIMAX_BASE_URL", "https://api.minimax.chat/v1")
+# API Keys
+GROQ_API_KEY = get_env("GROQ_API_KEY", required=True)
+PINECONE_API_KEY = get_env("PINECONE_API_KEY", required=True)
 
-# Pinecone (requerido)
-PINECONE_API_KEY = require_env("PINECONE_API_KEY")
-PINECONE_INDEX = os.getenv("PINECONE_INDEX", "gc-housing")
-PINECONE_ENV = os.getenv("PINECONE_ENV", "us-east-1")
+# Pinecone
+PINECONE_INDEX = get_env("PINECONE_INDEX", "gc-housing")
+PINECONE_ENV = get_env("PINECONE_ENV", "us-east-1")
 
 # CORS
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+ALLOWED_ORIGINS = get_env("ALLOWED_ORIGINS", "*").split(",")
 
 # INE
-INE_MUNICIPIO = os.getenv("INE_CODIGO_MUNICIPIO", "35020")  # Las Palmas de GC
+INE_MUNICIPIO = get_env("INE_CODIGO_MUNICIPIO", "35020")  # Las Palmas de GC
 
-# Embedding model
+# Embedding model (local, no requiere API key)
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384
 
