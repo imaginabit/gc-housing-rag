@@ -404,21 +404,17 @@ def get_barrios_polygons(response: Response):
     return result
 
 
-# Artículos curados sobre vivienda vacacional en Canarias
-_NEWS_ARTICLES = [
+# Noticias: lee de data/raw/news_articles.json (generado por news_scraper)
+# Fallback: artículos curados manualmente
+_NEWS_FILE = DATA_RAW_DIR / "news_articles.json"
+
+_FALLBACK_ARTICLES = [
     {
         "title": "Las Palmas de Gran Canaria abandona la carrera del crecimiento turístico tras un año con récord de visitantes",
         "source": "Canarias7",
         "url": "https://www.canarias7.es/canarias/gran-canaria/las-palmas-de-gran-canaria/palmas-gran-canaria-abandona-carrera-crecimiento-turistico-20260211071500-nt.html",
         "date": "2026-02-11",
-        "topic": "política turística",
-    },
-    {
-        "title": "Gran Canaria logra una facturación turística récord de 6.280 millones en 2025",
-        "source": "La Provincia",
-        "url": "https://www.laprovincia.es/gran-canaria/2026/02/18/gran-canaria-logra-facturacion-turistica-126999055.html",
-        "date": "2026-02-18",
-        "topic": "economía turística",
+        "topic": "legislación",
     },
     {
         "title": "Vecinos de El Médano alertan de que hay 3 veces más viviendas vacacionales de las registradas",
@@ -428,64 +424,37 @@ _NEWS_ARTICLES = [
         "topic": "denuncia vecinal",
     },
     {
-        "title": "Nueva Ley de Vivienda Vacacional en Canarias (Ley 6/2025): ¿Cómo afecta a mi Comunidad de Vecinos?",
-        "source": "MD Comunidades",
-        "url": "https://mdcomunidades.com/nueva-ley-de-vivienda-vacacional-en-canarias-ley-6-2025-como-afecta-a-mi-comunidad-de-vecinos/",
-        "date": "2025-12-13",
-        "topic": "legislación",
-    },
-    {
-        "title": "Un cambio en la ley da a los vecinos la potestad de rechazar pisos turísticos",
-        "source": "La Provincia",
-        "url": "https://www.laprovincia.es/canarias/2025/04/03/cambio-ley-da-vecinos-potestad-116027282.html",
-        "date": "2025-04-03",
-        "topic": "legislación",
-    },
-    {
         "title": "Foro Isleta: 'La vivienda vacacional rompe a las familias y genera un éxodo de vecinos'",
         "source": "COPE",
         "url": "https://www.cope.es/emisoras/canarias/las-palmas/gran-canaria/noticias/foro-isleta-vivienda-vacacional-rompe-las-familias-genera-exodo-vecinos-20240401_3223529",
         "date": "2024-04-01",
         "topic": "denuncia vecinal",
     },
-    {
-        "title": "El tormento de vivir pared con pared con un piso turístico: 'Aquí no se puede dormir. Es un infierno'",
-        "source": "elDiario.es",
-        "url": "https://www.eldiario.es/canariasahora/sociedad/tormento-vivir-pared-pared-piso-turistico-no-dormir-infierno_1_11578821.html",
-        "date": "2024-08-09",
-        "topic": "impacto social",
-    },
-    {
-        "title": "Las viviendas vacacionales en Las Palmas de Gran Canaria crecen un 22% en menos de un año",
-        "source": "La Provincia",
-        "url": "https://ocio.laprovincia.es/las-palmas/2024/09/23/viviendas-vacacionales-palmas-gran-canaria-108296629.html",
-        "date": "2024-09-23",
-        "topic": "datos",
-    },
-    {
-        "title": "Este es el mapa de las viviendas vacacionales en Las Palmas de Gran Canaria, ¿hay muchas en tu zona?",
-        "source": "La Provincia",
-        "url": "https://ocio.laprovincia.es/las-palmas/2024/04/22/mapa-viviendas-vacacionales-palmas-gran-101395599.html",
-        "date": "2024-04-22",
-        "topic": "datos",
-    },
-    {
-        "title": "El alquiler vacacional crece un 13% de un verano a otro en Las Palmas de Gran Canaria",
-        "source": "La Provincia",
-        "url": "https://www.laprovincia.es/las-palmas/2025/07/03/alquiler-vacacional-crece-las-palmas-gran-canaria-119325753.html",
-        "date": "2025-07-03",
-        "topic": "datos",
-    },
 ]
+
+
+def _load_news() -> list[dict]:
+    """Carga artículos del scraper, con fallback a artículos curados."""
+    if _NEWS_FILE.exists():
+        try:
+            with open(_NEWS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            articles = data.get("articles", [])
+            if articles:
+                return articles
+        except Exception as e:
+            logger.warning(f"Error leyendo news_articles.json: {e}")
+    return _FALLBACK_ARTICLES
 
 
 @app.get("/news")
 def get_news():
     """Devuelve artículos recientes sobre vivienda vacacional en Canarias."""
+    articles = _load_news()
     return {
         "source": "Éxodo Vecinal — curación de noticias",
-        "total": len(_NEWS_ARTICLES),
-        "articles": _NEWS_ARTICLES,
+        "total": len(articles),
+        "articles": articles[:30],
     }
 
 
