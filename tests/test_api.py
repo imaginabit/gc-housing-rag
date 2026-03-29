@@ -262,3 +262,60 @@ class TestNumpyConversion:
 
         assert result["nested"]["value"] == 100
         assert isinstance(result["nested"]["value"], int)
+
+
+class TestNewsEndpoint:
+    """Tests para el endpoint GET /news."""
+
+    def test_news_returns_200(self, mock_env):
+        """GET /news debe retornar 200 con artículos."""
+        from src.rag.api import app
+
+        client = TestClient(app)
+        response = client.get("/news")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "articles" in data
+        assert "total" in data
+        assert data["total"] > 0
+
+    def test_news_article_structure(self, mock_env):
+        """Cada artículo debe tener title, source, url, date, topic."""
+        from src.rag.api import app
+
+        client = TestClient(app)
+        response = client.get("/news")
+        data = response.json()
+
+        for article in data["articles"]:
+            assert "title" in article
+            assert "source" in article
+            assert "url" in article
+            assert "date" in article
+            assert "topic" in article
+            assert article["url"].startswith("https://")
+
+
+class TestFrontendServing:
+    """Tests para el serving del frontend estático."""
+
+    def test_root_serves_frontend(self, mock_env):
+        """GET / debe servir el index.html."""
+        from src.rag.api import app
+
+        client = TestClient(app)
+        response = client.get("/")
+
+        assert response.status_code == 200
+        assert "Éxodo Vecinal" in response.text
+
+    def test_catch_all_serves_frontend(self, mock_env):
+        """GET /cualquier/ruta debe servir index.html (SPA)."""
+        from src.rag.api import app
+
+        client = TestClient(app)
+        response = client.get("/cualquier/ruta/inexistente")
+
+        assert response.status_code == 200
+        assert "Éxodo Vecinal" in response.text

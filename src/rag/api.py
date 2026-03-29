@@ -1,24 +1,28 @@
 """
-Backend FastAPI para GC Housing RAG.
+Backend FastAPI para Éxodo Vecinal.
 
 Expone endpoints para:
 - GET /health — health check (verifica conexiones)
 - GET /barrios — lista de barrios con datos
 - POST /query — hacer una pregunta al RAG
-- GET /map-data — datos para el mapa
+- GET /map-data — datos agregados para el mapa
 - GET /turismo-points — puntos de viviendas turísticas
 - GET /barrios-polygons — polígonos GeoJSON de barrios
+- GET /news — artículos curados sobre vivienda vacacional
+- GET /* — frontend estático (catch-all)
 """
 
 import logging
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict, Any
 import json
 import pandas as pd
 import numpy as np
+from pathlib import Path
 
 from ..config import DATA_RAW_DIR, ALLOWED_ORIGINS, BARRIOS_LPGC
 from .embedder import embed_query, check_embedding_dim
@@ -28,8 +32,8 @@ from .chat import ask_question, format_map_context
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="GC Housing RAG API",
-    description="API para consultar datos de turistificación en LPGC",
+    title="Éxodo Vecinal API",
+    description="API para consultar datos de turistificación en Las Palmas de Gran Canaria",
     version="0.1.0",
 )
 
@@ -41,6 +45,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Frontend estático (servido por uvicorn en producción)
+_FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
 # Constants
 MAX_QUESTION_LENGTH = 2000
@@ -395,3 +402,100 @@ def get_barrios_polygons(response: Response):
     }
 
     return result
+
+
+# Artículos curados sobre vivienda vacacional en Canarias
+_NEWS_ARTICLES = [
+    {
+        "title": "Las Palmas de Gran Canaria abandona la carrera del crecimiento turístico tras un año con récord de visitantes",
+        "source": "Canarias7",
+        "url": "https://www.canarias7.es/canarias/gran-canaria/las-palmas-de-gran-canaria/palmas-gran-canaria-abandona-carrera-crecimiento-turistico-20260211071500-nt.html",
+        "date": "2026-02-11",
+        "topic": "política turística",
+    },
+    {
+        "title": "Gran Canaria logra una facturación turística récord de 6.280 millones en 2025",
+        "source": "La Provincia",
+        "url": "https://www.laprovincia.es/gran-canaria/2026/02/18/gran-canaria-logra-facturacion-turistica-126999055.html",
+        "date": "2026-02-18",
+        "topic": "economía turística",
+    },
+    {
+        "title": "Vecinos de El Médano alertan de que hay 3 veces más viviendas vacacionales de las registradas",
+        "source": "Diario de Avisos",
+        "url": "https://diariodeavisos.elespanol.com/2026/01/viviendas-vacacionales-el-medano/",
+        "date": "2026-01-26",
+        "topic": "denuncia vecinal",
+    },
+    {
+        "title": "Nueva Ley de Vivienda Vacacional en Canarias (Ley 6/2025): ¿Cómo afecta a mi Comunidad de Vecinos?",
+        "source": "MD Comunidades",
+        "url": "https://mdcomunidades.com/nueva-ley-de-vivienda-vacacional-en-canarias-ley-6-2025-como-afecta-a-mi-comunidad-de-vecinos/",
+        "date": "2025-12-13",
+        "topic": "legislación",
+    },
+    {
+        "title": "Un cambio en la ley da a los vecinos la potestad de rechazar pisos turísticos",
+        "source": "La Provincia",
+        "url": "https://www.laprovincia.es/canarias/2025/04/03/cambio-ley-da-vecinos-potestad-116027282.html",
+        "date": "2025-04-03",
+        "topic": "legislación",
+    },
+    {
+        "title": "Foro Isleta: 'La vivienda vacacional rompe a las familias y genera un éxodo de vecinos'",
+        "source": "COPE",
+        "url": "https://www.cope.es/emisoras/canarias/las-palmas/gran-canaria/noticias/foro-isleta-vivienda-vacacional-rompe-las-familias-genera-exodo-vecinos-20240401_3223529",
+        "date": "2024-04-01",
+        "topic": "denuncia vecinal",
+    },
+    {
+        "title": "El tormento de vivir pared con pared con un piso turístico: 'Aquí no se puede dormir. Es un infierno'",
+        "source": "elDiario.es",
+        "url": "https://www.eldiario.es/canariasahora/sociedad/tormento-vivir-pared-pared-piso-turistico-no-dormir-infierno_1_11578821.html",
+        "date": "2024-08-09",
+        "topic": "impacto social",
+    },
+    {
+        "title": "Las viviendas vacacionales en Las Palmas de Gran Canaria crecen un 22% en menos de un año",
+        "source": "La Provincia",
+        "url": "https://ocio.laprovincia.es/las-palmas/2024/09/23/viviendas-vacacionales-palmas-gran-canaria-108296629.html",
+        "date": "2024-09-23",
+        "topic": "datos",
+    },
+    {
+        "title": "Este es el mapa de las viviendas vacacionales en Las Palmas de Gran Canaria, ¿hay muchas en tu zona?",
+        "source": "La Provincia",
+        "url": "https://ocio.laprovincia.es/las-palmas/2024/04/22/mapa-viviendas-vacacionales-palmas-gran-101395599.html",
+        "date": "2024-04-22",
+        "topic": "datos",
+    },
+    {
+        "title": "El alquiler vacacional crece un 13% de un verano a otro en Las Palmas de Gran Canaria",
+        "source": "La Provincia",
+        "url": "https://www.laprovincia.es/las-palmas/2025/07/03/alquiler-vacacional-crece-las-palmas-gran-canaria-119325753.html",
+        "date": "2025-07-03",
+        "topic": "datos",
+    },
+]
+
+
+@app.get("/news")
+def get_news():
+    """Devuelve artículos recientes sobre vivienda vacacional en Canarias."""
+    return {
+        "source": "Éxodo Vecinal — curación de noticias",
+        "total": len(_NEWS_ARTICLES),
+        "articles": _NEWS_ARTICLES,
+    }
+
+
+# Frontend: servir index.html para cualquier ruta que no sea API
+@app.get("/{full_path:path}")
+def serve_frontend(full_path: str):
+    """Sirve el frontend estático para cualquier ruta no-API."""
+    # Si piden un archivo específico que existe, servirlo
+    file_path = _FRONTEND_DIR / full_path
+    if full_path and file_path.is_file():
+        return FileResponse(file_path)
+    # Siempre servir index.html (SPA behavior)
+    return FileResponse(_FRONTEND_DIR / "index.html")
