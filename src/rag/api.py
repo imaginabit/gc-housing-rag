@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+import json
 import pandas as pd
 import numpy as np
 
@@ -274,4 +275,41 @@ def get_turismo_points():
         "with_coords": len(valid),
         "coverage_pct": round(len(valid) / len(df) * 100, 1),
         "points": points,
+    }
+
+
+@app.get("/barrios-polygons")
+def get_barrios_polygons():
+    """Devuelve polígonos de barrios de LPGC con datos de viviendas."""
+    barrios_path = DATA_RAW_DIR / "barrios_lpgc.json"
+    turismo_path = DATA_RAW_DIR / "turismo_lpgc_with_barrios.csv"
+
+    if not barrios_path.exists():
+        return {"error": "Polígonos no disponibles", "type": "FeatureCollection", "features": []}
+
+    # Load tourism data for counts
+    counts = {}
+    if turismo_path.exists():
+        df = pd.read_csv(turismo_path)
+        df = df[df["barrio_asignado"].notna() & (df["barrio_asignado"] != "_U")]
+        counts = df["barrio_asignado"].value_counts().to_dict()
+
+    with open(barrios_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Filter out diseminado and add counts
+    features = []
+    for feat in data.get("features", []):
+        nombre = feat.get("properties", {}).get("NUCL_DS_NOMBRE", "")
+        # Skip diseminado
+        if "DISEMINADO" in nombre.upper():
+            continue
+        # Add count
+        count = counts.get(nombre.upper(), 0)
+        feat["properties"]["viviendas_count"] = count
+        features.append(feat)
+
+    return {
+        "type": "FeatureCollection",
+        "features": features,
     }

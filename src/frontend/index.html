@@ -387,41 +387,7 @@
             maxZoom: 19
         }).addTo(map);
         
-        // ============================================
-        // BARRIO MARKERS (simplified - would come from API)
-        // ============================================
-        const BARRIOS_DATA = {
-            "Vegueta": { lat: 28.1013, lng: -15.4150, color: '#e63946' },
-            "Triana": { lat: 28.0960, lng: -15.4220, color: '#f4a261' },
-            "Mesa y López": { lat: 28.1118, lng: -15.4310, color: '#e9c46a' },
-            "Playa de las Canteras": { lat: 28.1240, lng: -15.4480, color: '#2a9d8f' },
-            "La Isleta": { lat: 28.1380, lng: -15.4250, color: '#264653' }
-        };
-        
-        // Create markers for each barrio
-        Object.entries(BARRIOS_DATA).forEach(([name, data]) => {
-            const marker = L.circleMarker([data.lat, data.lng], {
-                radius: 20,
-                fillColor: data.color,
-                color: '#ffffff',
-                weight: 2,
-                opacity: 1,
-                fillOpacity: 0.7
-            }).addTo(map);
-            
-            marker.bindPopup(`
-                <div style="color: #333; min-width: 150px;">
-                    <strong>${name}</strong><br>
-                    <span style="color: #666; font-size: 0.85em;">
-                        Pulsa para ver datos
-                    </span>
-                </div>
-            `);
-            
-            marker.on('click', () => {
-                askQuestion(`Dame datos sobre ${name}`);
-            });
-        });
+        // Los barrios ahora se cargan desde los polígonos (toggle Barrios)
 
         // ============================================
         // TURISMO HOUSING HEATMAP
@@ -488,8 +454,108 @@
             }
         };
 
-        // Load heatmap on init
+        // Load polygons on init (auto-show)
+        loadBarriosPolygons();
+        barriosVisible = true;
+
         // No auto-load heatmap - user toggles manually
+
+        // ============================================
+        // BARRIOS POLYGONS
+        // ============================================
+        let barriosLayer = null;
+
+        async function loadBarriosPolygons() {
+            try {
+                const response = await fetch(`${API_BASE}/barrios-polygons`);
+                if (!response.ok) return;
+
+                const data = await response.json();
+                if (!data.features || data.features.length === 0) return;
+
+                // Get max count for color scaling
+                const maxCount = Math.max(...data.features.map(f => f.properties.viviendas_count || 0));
+
+                // Color scale function (blue -> yellow -> red)
+                function getColor(count) {
+                    if (!count || count === 0) return '#888';
+                    const ratio = count / maxCount;
+                    if (ratio < 0.25) return '#3498db';
+                    if (ratio < 0.5) return '#f1c40f';
+                    if (ratio < 0.75) return '#e67e22';
+                    return '#e74c3c';
+                }
+
+                barriosLayer = L.geoJSON(data, {
+                    style: function(feature) {
+                        const count = feature.properties.viviendas_count || 0;
+                        return {
+                            color: '#fff',
+                            weight: 1.5,
+                            fillColor: getColor(count),
+                            fillOpacity: 0.5
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        const nombre = feature.properties.NUCL_DS_NOMBRE || 'Barrio';
+                        const count = feature.properties.viviendas_count || 0;
+
+                        const btn = document.createElement('button');
+                        btn.textContent = '💬 Consultar';
+                        btn.style.cssText = 'margin-top: 10px; padding: 6px 12px; background: #e63946; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;';
+                        btn.onclick = function() {
+                            window.askQuestion('Dame datos sobre ' + nombre);
+                        };
+
+                        const popupDiv = document.createElement('div');
+                        popupDiv.style.cssText = 'color: #333; min-width: 180px;';
+                        popupDiv.innerHTML = `<strong style="font-size: 14px;">${nombre}</strong><hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;"><div style="font-size: 13px;"><div><strong>Viviendas turísticas:</strong> ${count}</div></div>`;
+                        popupDiv.appendChild(btn);
+
+                        layer.bindPopup(popupDiv);
+                        layer.on('mouseover', function() {
+                            this.setStyle({weight: 3, fillOpacity: 0.7});
+                        });
+                        layer.on('mouseout', function() {
+                            this.setStyle({weight: 1.5, fillOpacity: 0.5});
+                        });
+                    }
+                }).addTo(map);
+
+                console.log(`Barrios polygons: ${data.features.length} features`);
+
+            } catch (e) {
+                console.error('Error cargando polígonos:', e);
+            }
+        }
+
+        // Add toggle for polygons
+        const polyBtn = L.control({position: 'topright'});
+        polyBtn.onAdd = function() {
+            const div = L.DomUtil.create('div', 'poly-toggle');
+            const btn = document.createElement('button');
+            btn.textContent = '🏛️ Barrios OFF';
+            btn.onclick = function() { toggleBarrios(); };
+            btn.style.cssText = 'background: #2d3748; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.3); margin-left: 5px;';
+            div.appendChild(btn);
+            return div;
+        };
+        polyBtn.addTo(map);
+
+        let barriosVisible = false;
+        window.toggleBarrios = function() {
+            const btn = document.querySelector('.poly-toggle button');
+            if (barriosVisible) {
+                map.removeLayer(barriosLayer);
+                barriosVisible = false;
+                if (btn) btn.textContent = '🏛️ Barrios OFF';
+            } else {
+                if (!barriosLayer) loadBarriosPolygons();
+                else barriosLayer.addTo(map);
+                barriosVisible = true;
+                if (btn) btn.textContent = '🏛️ Barrios ON';
+            }
+        };
 
         // Heatmap legend
         const legend = L.control({position: 'bottomright'});
@@ -637,7 +703,7 @@
         }
         
         
-        async function askQuestion(question) {
+        window.askQuestion = async function(question) {
             chatInput.value = question;
             sendMessage();
         }
