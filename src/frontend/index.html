@@ -7,6 +7,7 @@
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.css" />
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -359,7 +360,8 @@
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
     <script>
         // ============================================
         // CONFIG
@@ -420,7 +422,97 @@
                 askQuestion(`Dame datos sobre ${name}`);
             });
         });
-        
+
+        // ============================================
+        // TURISMO HOUSING HEATMAP
+        // ============================================
+        let heatmapLayer = null;
+        let heatmapVisible = false;
+
+        async function loadTurismoHeatmap() {
+            try {
+                const response = await fetch(`${API_BASE}/turismo-points`);
+                if (!response.ok) return;
+
+                const data = await response.json();
+                if (!data.points || data.points.length === 0) return;
+
+                // Create heatmap with [lat, lng, intensity]
+                const heatPoints = data.points.map(p => [p.lat, p.lng, 0.5]);
+
+                heatmapLayer = L.heatLayer(heatPoints, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 17,
+                    gradient: {
+                        0.2: 'blue',
+                        0.4: 'cyan',
+                        0.6: 'lime',
+                        0.8: 'yellow',
+                        1.0: 'red'
+                    }
+                }).addTo(map);
+
+                heatmapVisible = true;
+                console.log(`Heatmap cargado: ${data.points.length} puntos`);
+
+            } catch (e) {
+                console.error('Error cargando heatmap:', e);
+            }
+        }
+
+        // Add toggle button
+        const heatmapBtn = L.control({position: 'topright'});
+        heatmapBtn.onAdd = function() {
+            const div = L.DomUtil.create('div', 'heatmap-toggle');
+            const btn = document.createElement('button');
+            btn.textContent = '🔥 Heatmap ON';
+            btn.onclick = function() { toggleHeatmap(); };
+            btn.style.cssText = 'background: #e63946; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.3);';
+            div.appendChild(btn);
+            return div;
+        };
+        heatmapBtn.addTo(map);
+
+        window.toggleHeatmap = function() {
+            const btn = document.querySelector('.heatmap-toggle button');
+            if (heatmapVisible) {
+                map.removeLayer(heatmapLayer);
+                heatmapVisible = false;
+                if (btn) btn.textContent = '🔥 Heatmap OFF';
+            } else {
+                if (!heatmapLayer) loadTurismoHeatmap();
+                else heatmapLayer.addTo(map);
+                heatmapVisible = true;
+                if (btn) btn.textContent = '🔥 Heatmap ON';
+            }
+        };
+
+        // Load heatmap on init
+        // No auto-load heatmap - user toggles manually
+
+        // Heatmap legend
+        const legend = L.control({position: 'bottomright'});
+        legend.onAdd = function() {
+            const div = L.DomUtil.create('div', 'legend');
+            div.innerHTML = `
+                <div style="background: rgba(0,0,0,0.7); padding: 10px; border-radius: 4px; color: white; font-size: 11px;">
+                    <strong>Densidad</strong><br>
+                    <div style="display: flex; align-items: center; margin-top: 5px;">
+                        <span style="width: 20px; height: 10px; background: red; margin-right: 5px;"></span> Alta
+                    </div>
+                    <div style="display: flex; align-items: center; margin-top: 3px;">
+                        <span style="width: 20px; height: 10px; background: yellow; margin-right: 5px;"></span> Media
+                    </div>
+                    <div style="display: flex; align-items: center; margin-top: 3px;">
+                        <span style="width: 20px; height: 10px; background: blue; margin-right: 5px;"></span> Baja
+                    </div>
+                </div>
+            `;
+            return div;
+        };
+        legend.addTo(map);
+
         // ============================================
         // CHAT
         // ============================================

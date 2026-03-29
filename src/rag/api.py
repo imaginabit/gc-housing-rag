@@ -248,3 +248,30 @@ def get_map_data():
         )
 
     return result
+
+
+@app.get("/turismo-points")
+def get_turismo_points():
+    """Devuelve puntos de viviendas turísticas del Registro Turismo."""
+    turismo_path = DATA_RAW_DIR / "turismo_lpgc_with_barrios.csv"
+
+    if not turismo_path.exists():
+        return {"error": "Datos no disponibles", "points": []}
+
+    df = pd.read_csv(turismo_path)
+    valid = df[(df["lat"] != 0) & (df["lng"] != 0)]
+
+    if len(valid) > 5000:
+        valid = valid.sample(5000, random_state=42)
+
+    # Fill NaN values before converting to dict
+    valid = valid.fillna("")
+    points = valid[["lat", "lng", "barrio_asignado", "plazas"]].to_dict(orient="records")
+
+    return {
+        "source": "Registro Turismo de Canarias",
+        "total": len(df),
+        "with_coords": len(valid),
+        "coverage_pct": round(len(valid) / len(df) * 100, 1),
+        "points": points,
+    }
