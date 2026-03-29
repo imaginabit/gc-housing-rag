@@ -1,0 +1,30 @@
+[Unit]
+Description=Éxodo Vecinal — FastAPI RAG server
+After=network.target
+
+[Service]
+Type=simple
+User=debian
+Group=debian
+WorkingDirectory=/opt/exodovecinal
+ExecStart=/opt/exodovecinal/venv/bin/uvicorn src.rag.api:app --host 127.0.0.1 --port 8000
+
+# Reiniciar si crashea
+Restart=on-failure
+RestartSec=5
+
+# Límites de memoria (protección RAM)
+MemoryMax=500M
+MemoryHigh=400M
+
+# Variables de entorno
+EnvironmentFile=/opt/exodovecinal/.env
+Environment=PYTHONUNBUFFERED=1
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=exodovecinal
+
+[Install]
+WantedBy=multi-user.target
