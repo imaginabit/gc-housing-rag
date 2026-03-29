@@ -359,92 +359,229 @@
             <tr>
                 <th>Capa</th>
                 <th>Tecnología</th>
-                <th>Costo</th>
             </tr>
             <tr>
                 <td><strong>Backend</strong></td>
                 <td>Python 3.11 + FastAPI + Uvicorn</td>
-                <td>Gratis (open source)</td>
             </tr>
             <tr>
                 <td><strong>Embeddings</strong></td>
                 <td>sentence-transformers (all-MiniLM-L6-v2)</td>
-                <td>Gratis (local, sin API)</td>
             </tr>
             <tr>
                 <td><strong>Vector DB</strong></td>
                 <td>Pinecone (free tier, 32 vectores)</td>
-                <td>Gratis</td>
             </tr>
             <tr>
                 <td><strong>LLM</strong></td>
                 <td>Groq — Llama 3.3 70B (free tier)</td>
-                <td>Gratis</td>
             </tr>
             <tr>
                 <td><strong>Frontend</strong></td>
                 <td>HTML + CSS + JS vanilla + Leaflet.js</td>
-                <td>Gratis</td>
             </tr>
             <tr>
                 <td><strong>Mapa</strong></td>
                 <td>Leaflet.js + OpenStreetMap tiles</td>
-                <td>Gratis</td>
             </tr>
             <tr>
                 <td><strong>Servidor</strong></td>
                 <td>OVH VPS (Debian 12, 2GB RAM)</td>
-                <td>~5€/mes (ya existía)</td>
             </tr>
             <tr>
                 <td><strong>SSL</strong></td>
                 <td>Let's Encrypt (certbot)</td>
-                <td>Gratis</td>
             </tr>
             <tr>
                 <td><strong>Noticias</strong></td>
                 <td>Google News RSS + feedparser</td>
-                <td>Gratis</td>
             </tr>
         </table>
 
         <!-- Arquitectura -->
         <h2>Arquitectura</h2>
-        <pre><code>
-Internet
-   │
-   ▼
-┌──────────────────────────────────────┐
-│  Nginx (puerto 80/443, SSL)          │
-│  exodovecinal.imaginabit.com         │
-└──────────────┬───────────────────────┘
-               │ proxy_pass
-               ▼
-┌──────────────────────────────────────┐
-│  Uvicorn (puerto 8000)               │
-│  FastAPI — /opt/exodovecinal/        │
-│                                      │
-│  ┌─────────────────────────────┐     │
-│  │ Frontend (HTML estático)    │     │
-│  │ Leaflet.js + Chat UI        │     │
-│  └─────────────────────────────┘     │
-│                                      │
-│  ┌──────────┐  ┌─────────────────┐   │
-│  │ /health  │  │ /query (RAG)    │   │
-│  │ /news    │  │ /map-data       │   │
-│  │ /barrios │  │ /turismo-points │   │
-│  └──────────┘  └─────────────────┘   │
-└──────────────┬───────────────────────┘
-               │
-       ┌───────┴────────┐
-       ▼                ▼
-┌─────────────┐  ┌──────────────┐
-│ Pinecone    │  │ Groq API     │
-│ (USA)       │  │ (LLM)        │
-│ Vector DB   │  │ Llama 3.3    │
-│ Free tier   │  │ Free tier    │
-└─────────────┘  └──────────────┘
-        </code></pre>
+
+        <style>
+            .arch-diagram {
+                position: relative;
+                padding: 1.5rem 0;
+                margin: 1.5rem 0;
+            }
+
+            .arch-row {
+                display: flex;
+                justify-content: center;
+                gap: 1.5rem;
+                margin-bottom: 0.5rem;
+                position: relative;
+                z-index: 2;
+            }
+
+            .arch-box {
+                background: var(--bg-card);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                padding: 0.8rem 1.2rem;
+                text-align: center;
+                min-width: 160px;
+            }
+
+            .arch-box h4 {
+                font-size: 0.85rem;
+                color: var(--text);
+                margin-bottom: 0.2rem;
+            }
+
+            .arch-box p {
+                font-size: 0.7rem;
+                color: var(--text-dim);
+                margin: 0;
+            }
+
+            .arch-box.accent {
+                border-color: var(--accent);
+                background: var(--accent-dim);
+            }
+
+            .arch-box.blue {
+                border-color: var(--blue);
+                background: rgba(52, 152, 219, 0.15);
+            }
+
+            .arch-box.green {
+                border-color: var(--green);
+                background: rgba(46, 204, 113, 0.15);
+            }
+
+            .arch-box.purple {
+                border-color: var(--purple);
+                background: rgba(155, 89, 182, 0.15);
+            }
+
+            .arch-box.wide {
+                min-width: 350px;
+            }
+
+            .arch-arrow {
+                display: flex;
+                justify-content: center;
+                padding: 0.3rem 0;
+            }
+
+            .arch-arrow svg {
+                width: 24px;
+                height: 32px;
+            }
+
+            .arch-label {
+                text-align: center;
+                font-size: 0.65rem;
+                color: var(--text-dim);
+                margin-bottom: 0.2rem;
+            }
+
+            .arch-sub {
+                display: flex;
+                justify-content: center;
+                gap: 1rem;
+                margin-top: 0.5rem;
+            }
+
+            .arch-sub .arch-box {
+                min-width: 140px;
+                padding: 0.6rem 1rem;
+            }
+        </style>
+
+        <div class="arch-diagram">
+            <!-- Usuario -->
+            <div class="arch-row">
+                <div class="arch-box accent">
+                    <h4>🌐 Usuario</h4>
+                    <p>Navegador web</p>
+                </div>
+            </div>
+
+            <!-- Flecha -->
+            <div class="arch-arrow">
+                <svg viewBox="0 0 24 32" fill="none" stroke="var(--accent)" stroke-width="2">
+                    <line x1="12" y1="2" x2="12" y2="26"/>
+                    <polyline points="6,20 12,28 18,20"/>
+                </svg>
+            </div>
+            <div class="arch-label">HTTPS</div>
+
+            <!-- Nginx -->
+            <div class="arch-row">
+                <div class="arch-box">
+                    <h4>🔒 Nginx</h4>
+                    <p>SSL + reverse proxy</p>
+                </div>
+            </div>
+
+            <!-- Flecha -->
+            <div class="arch-arrow">
+                <svg viewBox="0 0 24 32" fill="none" stroke="var(--text-dim)" stroke-width="2">
+                    <line x1="12" y1="2" x2="12" y2="26"/>
+                    <polyline points="6,20 12,28 18,20"/>
+                </svg>
+            </div>
+            <div class="arch-label">proxy_pass :8000</div>
+
+            <!-- Uvicorn + FastAPI -->
+            <div class="arch-row">
+                <div class="arch-box wide blue">
+                    <h4>🐍 Uvicorn + FastAPI</h4>
+                    <p>/opt/exodovecinal — Python 3.11</p>
+                </div>
+            </div>
+
+            <!-- Sub-componentes -->
+            <div class="arch-arrow">
+                <svg viewBox="0 0 24 32" fill="none" stroke="var(--blue)" stroke-width="2">
+                    <line x1="12" y1="2" x2="12" y2="26"/>
+                    <polyline points="6,20 12,28 18,20"/>
+                </svg>
+            </div>
+
+            <div class="arch-sub">
+                <div class="arch-box">
+                    <h4>🗺️ Frontend</h4>
+                    <p>Leaflet.js + Chat UI</p>
+                </div>
+                <div class="arch-box">
+                    <h4>📡 API endpoints</h4>
+                    <p>/query /map-data /news</p>
+                </div>
+                <div class="arch-box">
+                    <h4>🧠 Embeddings</h4>
+                    <p>sentence-transformers (local)</p>
+                </div>
+            </div>
+
+            <!-- Flecha externa -->
+            <div class="arch-arrow" style="margin-top: 1rem;">
+                <svg viewBox="0 0 120 32" fill="none" stroke="var(--text-dim)" stroke-width="2">
+                    <line x1="20" y1="2" x2="20" y2="26"/>
+                    <polyline points="14,20 20,28 26,20"/>
+                    <line x1="100" y1="2" x2="100" y2="26"/>
+                    <polyline points="94,20 100,28 106,20"/>
+                </svg>
+            </div>
+            <div class="arch-label">APIs externas</div>
+
+            <!-- Servicios externos -->
+            <div class="arch-row">
+                <div class="arch-box green">
+                    <h4>🔍 Pinecone</h4>
+                    <p>Vector DB (USA)</p>
+                </div>
+                <div class="arch-box purple">
+                    <h4>🤖 Groq</h4>
+                    <p>Llama 3.3 (LLM)</p>
+                </div>
+            </div>
+        </div>
 
         <!-- Chunk structure -->
         <h2>¿Qué son los "chunks"?</h2>
@@ -483,7 +620,11 @@ Internet
         <!-- Costo -->
         <h2>¿Cuánto cuesta?</h2>
         <div class="notice">
-            <p><strong>Costo marginal: 0€.</strong> Todo corre en free tiers (Pinecone, Groq) o localmente en el servidor (sentence-transformers). El único costo es el VPS (~5€/mes) que ya existía antes del proyecto.</p>
+            <p><strong>Hoy: 0€ de coste marginal.</strong> Todo corre en free tiers (Pinecone, Groq) o localmente en el servidor (sentence-transformers). El único coste real es el VPS que ya teníamos.</p>
+        </div>
+
+        <div class="notice" style="border-left-color: var(--yellow); background: rgba(243, 156, 18, 0.1);">
+            <p><strong>⚠️ Aviso de escalabilidad.</strong> Los servicios gratuitos (Pinecone, Groq) tienen límites de uso. No podemos predecir cómo escalarán los costos si entra mucha gente a la vez. Si la aplicación va lenta, no responde, o directamente deja de funcionar, probablemente es porque se han agotado las cuotas gratuitas. Lo sentimos — es un proyecto hecho con recursos mínimos. Si quieres ayudar a mantenerlo vivo, el código es abierto y puedes desplegar tu propia copia.</p>
         </div>
 
         <!-- Noticias -->
