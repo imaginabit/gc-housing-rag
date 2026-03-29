@@ -90,8 +90,24 @@
         }
 
         .tagline {
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             color: var(--text-secondary);
+        }
+
+        .about-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.8rem;
+            padding: 0.4rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .about-link:hover {
+            color: var(--accent);
+            border-color: var(--accent);
         }
 
         /* MAIN LAYOUT */
@@ -426,6 +442,7 @@
                 <p class="tagline">El mapa de la turistificación en Las Palmas GC</p>
             </div>
         </div>
+        <a href="/about.html" class="about-link">ℹ️ Cómo funciona</a>
     </header>
 
     <main>
