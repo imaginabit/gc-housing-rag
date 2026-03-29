@@ -1,4 +1,6 @@
 """
+[ONE-TIME] Ya ejecutado. Los polígonos están en data/raw/barrios_lpgc.json.
+
 Descarga polígonos de barrios desde el ArcGIS REST API del Ayuntamiento de LPGC.
 
 URL: https://sit.laspalmasgc.es/server/rest/services/opendata/barrios/MapServer/0/query?where=1%3D1&outFields=*&f=geojson
@@ -6,6 +8,7 @@ URL: https://sit.laspalmasgc.es/server/rest/services/opendata/barrios/MapServer/
 Uso:
     python -m src.ingest.download_barrios
 """
+
 import json
 import requests
 from pathlib import Path

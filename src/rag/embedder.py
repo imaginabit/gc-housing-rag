@@ -5,10 +5,14 @@ Usa el modelo 'all-MiniLM-L6-v2' que produce embeddings de 384 dims.
 No requiere API key — funciona 100% en local.
 """
 
+import logging
+
 from sentence_transformers import SentenceTransformer
 from typing import List
 
 from ..config import EMBEDDING_MODEL, EMBEDDING_DIM
+
+logger = logging.getLogger(__name__)
 
 # Cargador perezoso — solo se carga cuando se usa
 _model = None
@@ -18,7 +22,7 @@ def _get_model():
     """Carga el modelo bajo demanda."""
     global _model
     if _model is None:
-        print(f"  🔄 Cargando modelo de embeddings: {EMBEDDING_MODEL}")
+        logger.info("Cargando modelo de embeddings: %s", EMBEDDING_MODEL)
         _model = SentenceTransformer(EMBEDDING_MODEL)
     return _model
 

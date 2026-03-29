@@ -1,9 +1,12 @@
 """
+[ONE-TIME] Pipeline step — ya ejecutado. Los datos están en data/raw/.
+
 Geocodifica las viviendas que tienen coordenadas 0,0.
 
 Uso:
     python -m src.ingest.geocode_missing
 """
+
 import pandas as pd
 from pathlib import Path
 

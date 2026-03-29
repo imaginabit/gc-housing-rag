@@ -1,4 +1,6 @@
 """
+[ONE-TIME] Pipeline step — ya ejecutado. Los datos están en data/raw/turismo_lpgc_with_barrios.csv.
+
 Pipeline para asignar barrios a viviendas vacacionales.
 
 PROCESO OPTIMIZADO:
@@ -8,9 +10,8 @@ PROCESO OPTIMIZADO:
 
 NO necesita geocodificación - los datos ya tienen coords.
 
-Uso:
-    python -m src.ingest.assign_barrios
 """
+
 import pandas as pd
 from pathlib import Path
 

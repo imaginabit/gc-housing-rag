@@ -10,10 +10,14 @@ Modelos disponibles en Groq (gratis):
 - mixtral-8x7b-32768
 """
 
+import logging
+
 import groq
 from typing import List, Dict, Any, Optional
 
 from ..config import GROQ_API_KEY
+
+logger = logging.getLogger(__name__)
 
 # Groq client
 groq_client = groq.Groq(api_key=GROQ_API_KEY)
@@ -84,11 +88,15 @@ def ask_question(
             model=CHAT_MODEL, messages=messages, temperature=0.3, max_tokens=1024
         )
 
-        return response.choices[0].message.content
+        answer = response.choices[0].message.content
+        logger.info("Groq respondió (%d chars)", len(answer))
+        return answer
 
     except groq.APIError as e:
+        logger.error("Error de API Groq: %s", e)
         return f"Error de API Groq: {str(e)}"
     except Exception as e:
+        logger.error("Error en chat: %s", e)
         return f"Error: {str(e)}"
 
 

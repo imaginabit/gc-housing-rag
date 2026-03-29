@@ -1,4 +1,6 @@
 """
+[ONE-TIME] Pipeline step — ya ejecutado. Los datos limpios están en data/raw/.
+
 Limpia direcciones problemáticas y reintenta geocodificación.
 
 Problema: Muchas direcciones tienen formato incompatible con Nominatim:
@@ -8,6 +10,7 @@ Problema: Muchas direcciones tienen formato incompatible con Nominatim:
 Uso:
     python -m src.ingest.geocode_clean
 """
+
 import re
 import pandas as pd
 from pathlib import Path
@@ -38,22 +41,22 @@ def clean_address(direccion: str) -> str:
     # Patrones a eliminar (piso, puerta, escalera, etc.)
     # Orden importante: primero los más específicos
     eliminables = [
-        r"\s+Escalera\s+\w+",           # Escalera A, Escalera 3
-        r"\s+Planta\s+\w+",             # Planta 1, Planta Baja
-        r"\s+Piso\s+\d+",               # Piso 1, Piso 2
-        r"\s+\d+\s*[ªº]\s*[A-Z]?\s*$", # 1º, 2ºA, 3ºB al final
-        r"\s+\d+\s*[ªº]\s*[A-Z]?",     # 1ºA, 2ºB en medio
-        r"\s+Atico\s*[A-Z]?",           # Atico, Atico A
-        r"\s+Entreplanta\s*\d*",        # Entreplanta, Entreplanta 1
-        r"\s+Izquierda\s*$",            # ...Izquierda
-        r"\s+Derecha\s*$",              # ...Derecha
-        r"\s+Interior\s*\d*",           # Interior, Interior 1
-        r"\s+Oficina\s*\d*",            # Oficina, Oficina 1
-        r"\s+Local\s*\d*",              # Local, Local 1
-        r"\s+Nave\s*\d*",               # Nave, Nave 1
-        r"\s+Bloque\s*\w+",             # Bloque A, Bloque 1
-        r"\s+Portal\s*\w+",             # Portal 1, Portal A
-        r"\s+\d+\s*\d+\s*\d+\s*$",     #重复数字: 94 94 2 202
+        r"\s+Escalera\s+\w+",  # Escalera A, Escalera 3
+        r"\s+Planta\s+\w+",  # Planta 1, Planta Baja
+        r"\s+Piso\s+\d+",  # Piso 1, Piso 2
+        r"\s+\d+\s*[ªº]\s*[A-Z]?\s*$",  # 1º, 2ºA, 3ºB al final
+        r"\s+\d+\s*[ªº]\s*[A-Z]?",  # 1ºA, 2ºB en medio
+        r"\s+Atico\s*[A-Z]?",  # Atico, Atico A
+        r"\s+Entreplanta\s*\d*",  # Entreplanta, Entreplanta 1
+        r"\s+Izquierda\s*$",  # ...Izquierda
+        r"\s+Derecha\s*$",  # ...Derecha
+        r"\s+Interior\s*\d*",  # Interior, Interior 1
+        r"\s+Oficina\s*\d*",  # Oficina, Oficina 1
+        r"\s+Local\s*\d*",  # Local, Local 1
+        r"\s+Nave\s*\d*",  # Nave, Nave 1
+        r"\s+Bloque\s*\w+",  # Bloque A, Bloque 1
+        r"\s+Portal\s*\w+",  # Portal 1, Portal A
+        r"\s+\d+\s*\d+\s*\d+\s*$",  # 重复数字: 94 94 2 202
     ]
 
     for patron in eliminables:

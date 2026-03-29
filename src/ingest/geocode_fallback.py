@@ -1,4 +1,6 @@
 """
+[ONE-TIME] Pipeline step — ya ejecutado. Los datos están en data/raw/.
+
 Geocodificador con fallback: intenta múltiples estrategias.
 
 Estrategias:
@@ -10,6 +12,7 @@ Estrategias:
 Uso:
     python -m src.ingest.geocode_fallback
 """
+
 import re
 import pandas as pd
 from pathlib import Path
@@ -36,7 +39,11 @@ def clean_address_v2(direccion: str) -> str:
 
     # Eliminar todo después del número de puerta
     # "Calle Murga 30 Atico B" -> "Calle Murga 30"
-    match = re.match(r"^(Calle|Avenida|Plaza|Paseo|Camino|Ronda|Jardines|Pasaje)\s+\S+(?:\s+\S+)?\s*\d+", direccion, re.IGNORECASE)
+    match = re.match(
+        r"^(Calle|Avenida|Plaza|Paseo|Camino|Ronda|Jardines|Pasaje)\s+\S+(?:\s+\S+)?\s*\d+",
+        direccion,
+        re.IGNORECASE,
+    )
     if match:
         direccion = match.group(0)
 
@@ -109,7 +116,9 @@ def geocode_fallback():
             df.at[idx, "lat"] = result["lat"]
             df.at[idx, "lng"] = result["lon"]
             geocoded += 1
-            print(f"  ✅ {direccion[:30]}... -> {result['lat']:.4f}, {result['lon']:.4f}")
+            print(
+                f"  ✅ {direccion[:30]}... -> {result['lat']:.4f}, {result['lon']:.4f}"
+            )
         else:
             print(f"  ❌ {direccion[:40]}...")
 

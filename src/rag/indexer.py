@@ -4,11 +4,15 @@ Indexación y query de Pinecone (v3 API).
 Pinecone es un vector store serverless (free tier disponible).
 """
 
+import logging
+
 import pinecone
 from pinecone import Pinecone, ServerlessSpec
 from typing import List, Dict, Any, Optional
 
 from ..config import PINECONE_API_KEY, PINECONE_INDEX, PINECONE_ENV
+
+logger = logging.getLogger(__name__)
 
 
 def get_pinecone_client() -> Pinecone:
@@ -29,17 +33,17 @@ def create_index_if_not_exists(dimension: int = None):
     index_name = PINECONE_INDEX
 
     if index_name in pc.list_indexes().names():
-        print(f"  ℹ️ Índice '{index_name}' ya existe, reutilizando")
+        logger.info("Índice '%s' ya existe, reutilizando", index_name)
         return
 
-    print(f"  Creando índice '{index_name}' (dim={dim})...")
+    logger.info("Creando índice '%s' (dim=%d)", index_name, dim)
     pc.create_index(
         name=index_name,
         dimension=dim,
         metric="cosine",
         spec=ServerlessSpec(cloud="aws", region=PINECONE_ENV or "us-east-1"),
     )
-    print(f"  ✅ Índice creado")
+    logger.info("Índice '%s' creado", index_name)
 
 
 def index_data(chunks: List[Dict[str, Any]]):
@@ -71,9 +75,9 @@ def index_data(chunks: List[Dict[str, Any]]):
     for i in range(0, len(vectors), batch_size):
         batch = vectors[i : i + batch_size]
         index.upsert(vectors=batch)
-        print(f"  📦 Indexados {min(i + batch_size, len(vectors))}/{len(vectors)}")
+        logger.debug("Indexados %d/%d", min(i + batch_size, len(vectors)), len(vectors))
 
-    print(f"  ✅ Indexación completa: {len(vectors)} documentos")
+    logger.info("Indexación completa: %d documentos", len(vectors))
 
 
 def query_index(
@@ -97,4 +101,4 @@ def delete_all():
     pc = get_pinecone_client()
     index = pc.Index(PINECONE_INDEX)
     index.delete(delete_all=True)
-    print(f"  🗑️ Borrado todos los vectores")
+    logger.info("Borrado todos los vectores")

@@ -1,5 +1,6 @@
 """Configuración del proyecto GC Housing RAG."""
 
+import logging
 import os
 import warnings
 from pathlib import Path
@@ -42,6 +43,20 @@ def get_env(key: str, default: str = None, required: bool = False) -> str:
         )
         return ""
     return value or ""
+
+
+# Logging
+LOG_LEVEL = get_env("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Crea un logger con el nombre dado."""
+    return logging.getLogger(name)
 
 
 # API Keys

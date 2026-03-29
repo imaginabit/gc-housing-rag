@@ -2,24 +2,30 @@
 Backend FastAPI para GC Housing RAG.
 
 Expone endpoints para:
-- GET /health — health check
+- GET /health — health check (verifica conexiones)
 - GET /barrios — lista de barrios con datos
 - POST /query — hacer una pregunta al RAG
 - GET /map-data — datos para el mapa
+- GET /turismo-points — puntos de viviendas turísticas
+- GET /barrios-polygons — polígonos GeoJSON de barrios
 """
+
+import logging
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict, Any
 import json
 import pandas as pd
 import numpy as np
 
 from ..config import DATA_RAW_DIR, ALLOWED_ORIGINS, BARRIOS_LPGC
-from .embedder import embed_query
+from .embedder import embed_query, check_embedding_dim
 from .indexer import query_index
 from .chat import ask_question, format_map_context
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="GC Housing RAG API",
@@ -36,10 +42,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Constants
+MAX_QUESTION_LENGTH = 2000
+MAX_TOP_K = 50
+
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "gc-housing-rag"}
+    """
+    Health check con verificación de dependencias.
+    """
+    checks = {}
+
+    # Check embedding model
+    try:
+        test_emb = embed_query("test")
+        checks["embedder"] = "ok" if test_emb and len(test_emb) == 384 else "error"
+    except Exception as e:
+        checks["embedder"] = f"error: {str(e)}"
+
+    # Check Pinecone
+    try:
+        from .indexer import get_pinecone_client
+
+        pc = get_pinecone_client()
+        indexes = pc.list_indexes().names()
+        checks["pinecone"] = "ok" if indexes is not None else "error"
+    except Exception as e:
+        checks["pinecone"] = f"error: {str(e)}"
+
+    # Check data files
+    data_files = ["barrios_lpgc.json", "turismo_lpgc_with_barrios.csv"]
+    checks["data"] = {f: (DATA_RAW_DIR / f).exists() for f in data_files}
+
+    all_ok = all(
+        v == "ok" for k, v in checks.items() if k != "data" and isinstance(v, str)
+    )
+
+    return {
+        "status": "ok" if all_ok else "degraded",
+        "service": "gc-housing-rag",
+        "checks": checks,
+    }
 
 
 @app.get("/barrios")
@@ -48,7 +92,6 @@ def get_barrios():
     Devuelve lista de barrios con datos disponibles.
     """
     ine_path = DATA_RAW_DIR / "ine_population_processed.csv"
-    turismo_path = DATA_RAW_DIR / "turismo_viviendas.csv"
 
     result = {"barrios": [], "has_data": False}
 
@@ -68,6 +111,25 @@ class QueryRequest(BaseModel):
     top_k: Optional[int] = 5
     barrio: Optional[str] = None
 
+    @field_validator("question")
+    @classmethod
+    def question_must_be_valid(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("La pregunta no puede estar vacía")
+        if len(v) > MAX_QUESTION_LENGTH:
+            raise ValueError(
+                f"La pregunta no puede exceder {MAX_QUESTION_LENGTH} caracteres"
+            )
+        return v
+
+    @field_validator("top_k")
+    @classmethod
+    def top_k_must_be_reasonable(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and (v < 1 or v > MAX_TOP_K):
+            raise ValueError(f"top_k debe estar entre 1 y {MAX_TOP_K}")
+        return v
+
 
 class QueryResponse(BaseModel):
     answer: str
@@ -80,6 +142,13 @@ def query(request: QueryRequest):
     """
     Procesa una pregunta del usuario usando RAG.
     """
+    logger.info(
+        "Query: %s (top_k=%d, barrio=%s)",
+        request.question[:100],
+        request.top_k,
+        request.barrio,
+    )
+
     # 1. Generar embedding de la query
     query_embedding = embed_query(request.question)
 
@@ -96,12 +165,14 @@ def query(request: QueryRequest):
             filter_dict=filter_dict,
         )
     except Exception as e:
+        logger.error("Error en Pinecone: %s", e)
         raise HTTPException(status_code=500, detail=f"Error en Pinecone: {str(e)}")
 
     # 3. Generar respuesta con LLM
     try:
         answer = ask_question(request.question, results)
     except Exception as e:
+        logger.error("Error en LLM: %s", e)
         raise HTTPException(status_code=500, detail=f"Error en LLM: {str(e)}")
 
     # 4. Formatear datos para el mapa
@@ -120,6 +191,9 @@ def query(request: QueryRequest):
             }
         )
 
+    logger.info(
+        "Query completada: %d results, answer len=%d", len(results), len(answer)
+    )
     return QueryResponse(answer=answer, sources=sources, map_data=map_data)
 
 
@@ -267,7 +341,9 @@ def get_turismo_points():
 
     # Fill NaN values before converting to dict
     valid = valid.fillna("")
-    points = valid[["lat", "lng", "barrio_asignado", "plazas"]].to_dict(orient="records")
+    points = valid[["lat", "lng", "barrio_asignado", "plazas"]].to_dict(
+        orient="records"
+    )
 
     return {
         "source": "Registro Turismo de Canarias",
@@ -285,7 +361,11 @@ def get_barrios_polygons(response: Response):
     turismo_path = DATA_RAW_DIR / "turismo_lpgc_with_barrios.csv"
 
     if not barrios_path.exists():
-        return {"error": "Polígonos no disponibles", "type": "FeatureCollection", "features": []}
+        return {
+            "error": "Polígonos no disponibles",
+            "type": "FeatureCollection",
+            "features": [],
+        }
 
     # Load tourism data for counts
     counts = {}
