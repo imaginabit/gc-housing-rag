@@ -28,6 +28,9 @@
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
+    <!-- ApexCharts CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3/dist/apexcharts.min.css">
+
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -162,6 +165,15 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+        }
+
+        .chart-section-label {
+            padding: 0.5rem 1rem 0.25rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         /* News cards */
@@ -432,6 +444,9 @@
             }
         }
     </style>
+
+    <!-- ApexCharts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3"></script>
 </head>
 <body>
     <header>
@@ -450,6 +465,7 @@
             <div class="sidebar-tabs">
                 <button class="sidebar-tab active" data-tab="chat" onclick="switchTab('chat')">💬 Chat</button>
                 <button class="sidebar-tab" data-tab="barrios" onclick="switchTab('barrios')">📊 Barrios</button>
+                <button class="sidebar-tab" data-tab="stats" onclick="switchTab('stats')">📈 Stats</button>
                 <button class="sidebar-tab" data-tab="noticias" onclick="switchTab('noticias')">📰 Noticias</button>
             </div>
 
@@ -466,6 +482,78 @@
                 </div>
                 <div id="barriosTable" style="flex: 1; overflow-y: auto; font-size: 11px; padding: 0.75rem 1rem;">
                     <div style="color: var(--text-secondary);">Cargando...</div>
+                </div>
+            </div>
+
+            <div id="tab-stats" class="tab-panel" style="display: none;">
+                <!-- Totales -->
+                <div class="stats-bar">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statVVTotal">—</div>
+                        <div class="stat-label">VV totales</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statPlazasTotal">—</div>
+                        <div class="stat-label">Plazas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statBarriosVV">—</div>
+                        <div class="stat-label">Barrios c/VV</div>
+                    </div>
+                </div>
+
+                <!-- Ratio municipal (dato real del Censo 2021) -->
+                <div id="statMunicipal" style="margin: 0.5rem 1rem; padding: 0.5rem 0.75rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; font-size: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-secondary);">📊 Ratio municipal (Censo 2021):</span>
+                        <span id="statMunicipalRatio" style="font-weight: 600; color: var(--accent);">—</span>
+                    </div>
+                    <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                        <span id="statMunicipalVV">—</span> VV / <span id="statMunicipalViv">—</span> viviendas = <span id="statMunicipalPct">—</span>% del parque residencial
+                    </div>
+                    <div style="font-size: 0.6rem; color: var(--text-secondary); margin-top: 0.15rem;">
+                        Fuente: <a href="https://ine.es/dynt3/inebase/es/index.htm?padre=8952&capsel=9809" target="_blank" style="color: var(--accent);">INE Censo 2021 tabla 59525</a> (dato real, no estimado)
+                    </div>
+                </div>
+
+                <!-- Barrio selector -->
+                <div style="padding: 0.5rem 1rem 0;">
+                    <select id="statsBarrioSelect" style="width: 100%; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 0.8rem; font-family: inherit; cursor: pointer;">
+                        <option value="">— Selecciona un barrio —</option>
+                    </select>
+                </div>
+
+                <!-- Barrio detail card -->
+                <div id="statsBarrioDetail" style="display: none; margin: 0.5rem 1rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <strong id="statsBarrioName" style="font-size: 0.95rem; color: var(--text-primary);"></strong>
+                        <span id="statsBarrioRank" style="font-size: 0.7rem; color: var(--text-secondary); background: var(--bg-dark); padding: 0.2rem 0.5rem; border-radius: 4px;"></span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; font-size: 0.75rem;">
+                        <div><span style="color: var(--text-secondary);">VV:</span> <strong id="statsDetailVV">—</strong></div>
+                        <div><span style="color: var(--text-secondary);">Plazas:</span> <strong id="statsDetailPlazas">—</strong></div>
+                        <div><span style="color: var(--text-secondary);">VV/1000hab:</span> <strong id="statsDetailRatioHab">—</strong></div>
+                        <div><span style="color: var(--text-secondary);">VV/100viv:</span> <strong id="statsDetailRatioViv">—</strong></div>
+                    </div>
+                    <div id="statsSyntheticBadge" style="display: none; margin-top: 0.4rem; font-size: 0.6rem; color: var(--text-secondary); background: var(--bg-dark); padding: 0.3rem 0.5rem; border-radius: 4px;">
+                        ⚠️ Población y viviendas estimadas: vv/100viv = VV ÷ (pob ÷ 2.2). <a href="https://ine.es/dynt3/inebase/es/index.htm?padre=8952&capsel=9809" target="_blank" style="color: var(--accent);">Censo 2021</a>
+                    </div>
+                </div>
+
+                <!-- Ranking chart -->
+                <div class="chart-section-label">🏆 Ranking barrios <span style="font-weight: 400; text-transform: none; letter-spacing: 0;">(haz click en una barra)</span></div>
+                <div id="chartRanking" style="height: 280px; padding: 0 0.5rem;"></div>
+
+                <!-- Time series chart -->
+                <div class="chart-section-label">📅 Serie temporal (ISTAC LPGC)</div>
+                <div id="chartTimeseries" style="height: 200px; padding: 0 0.5rem;"></div>
+
+                <!-- YoY comparison -->
+                <div class="stats-bar" style="margin-top: auto; padding: 0.5rem 1rem 0.75rem;">
+                    <div class="stat-card" style="flex: 1;">
+                        <div class="stat-value" id="statYoY">—</div>
+                        <div class="stat-label">VV vs hace 1 año</div>
+                    </div>
                 </div>
             </div>
 
@@ -722,6 +810,11 @@
                     layer.on('mouseout', function() {
                         this.setStyle({weight: 1.5, fillOpacity: 0.5});
                     });
+                    // Click on polygon → navigate to Stats tab and select barrio
+                    layer.on('click', function() {
+                        switchTab('stats');
+                        selectBarrio(nombre.toUpperCase());
+                    });
                 }
             }).addTo(map);
 
@@ -962,7 +1055,12 @@
 
             document.getElementById('tab-chat').style.display = tab === 'chat' ? '' : 'none';
             document.getElementById('tab-barrios').style.display = tab === 'barrios' ? '' : 'none';
+            document.getElementById('tab-stats').style.display = tab === 'stats' ? '' : 'none';
             document.getElementById('tab-noticias').style.display = tab === 'noticias' ? '' : 'none';
+
+            if (tab === 'stats') {
+                loadStatsTab();
+            }
         }
 
         // ============================================
@@ -1033,6 +1131,304 @@
                 console.error('Error cargando noticias:', error);
                 document.getElementById('newsList').innerHTML =
                     '<div style="color: var(--text-secondary); padding: 1rem;">No se pudieron cargar las noticias.</div>';
+            }
+        }
+
+        // ============================================
+        // STATS TAB
+        // ============================================
+        let statsTabCharts = { ranking: null, timeseries: null };
+        let statsInitialized = false;
+        const statsState = {
+            selectedBarrio: null,
+            barrioDetailCache: new Map(),
+            statsOverview: null,
+        };
+
+        // ---- selectBarrio: fetch detail, update UI, highlight chart bar, fly map ----
+        async function selectBarrio(barrioNorm) {
+            if (!barrioNorm) {
+                statsState.selectedBarrio = null;
+                document.getElementById('statsBarrioDetail').style.display = 'none';
+                document.getElementById('statsBarrioSelect').value = '';
+                return;
+            }
+
+            statsState.selectedBarrio = barrioNorm;
+
+            // Check cache
+            let detail = statsState.barrioDetailCache.get(barrioNorm);
+            if (!detail) {
+                try {
+                    const res = await fetch(
+                        `${API_BASE}/barrio-detail/${encodeURIComponent(barrioNorm)}`
+                    );
+                    if (!res.ok) throw new Error('API error');
+                    detail = await res.json();
+                    statsState.barrioDetailCache.set(barrioNorm, detail);
+                } catch (e) {
+                    console.error('Error fetching barrio detail:', e);
+                    return;
+                }
+            }
+
+            // Update detail card
+            document.getElementById('statsBarrioDetail').style.display = 'block';
+            document.getElementById('statsBarrioName').textContent =
+                barrioNorm.charAt(0) + barrioNorm.slice(1).toLowerCase();
+            document.getElementById('statsDetailVV').textContent =
+                detail.viviendas_count?.toLocaleString('es-ES') || '—';
+            document.getElementById('statsDetailPlazas').textContent =
+                detail.plazas ? detail.plazas.toLocaleString('es-ES') : '—';
+            const r = detail.ratios || {};
+            document.getElementById('statsDetailRatioHab').textContent =
+                r.vv_per_1000hab ? `${r.vv_per_1000hab}` : '—';
+            document.getElementById('statsDetailRatioViv').textContent =
+                r.vv_per_100_viviendas ? `${r.vv_per_100_viviendas}%` : '—';
+            document.getElementById('statsSyntheticBadge').style.display =
+                r.is_synthetic_population ? '' : 'none';
+
+            if (detail.ranking) {
+                document.getElementById('statsBarrioRank').textContent =
+                    `#${detail.ranking.posicion} de ${detail.ranking.total_barrios_con_vv}`;
+            } else {
+                document.getElementById('statsBarrioRank').textContent = '';
+            }
+
+            // Update selector value
+            const sel = document.getElementById('statsBarrioSelect');
+            sel.value = barrioNorm;
+
+            // Highlight bar in ranking chart
+            if (statsTabCharts.ranking && statsState.statsOverview) {
+                const top = statsState.statsOverview.top_barrios || [];
+                const idx = top.findIndex(b => b.barrio === barrioNorm);
+                if (idx >= 0) {
+                    statsTabCharts.ranking.updateSeries([{
+                        data: top.map((b, i) => ({
+                            x: b.barrio,
+                            y: b.vv_count,
+                            fillColor: i === idx ? '#ff6b6b' : undefined,
+                            strokeColor: i === idx ? '#ffffff' : undefined,
+                        }))
+                    }]);
+                }
+            }
+
+            // Fly map to barrio
+            if (typeof barriosData !== 'undefined' && barriosData?.features) {
+                const feat = barriosData.features.find(
+                    f => (f.properties.NUCL_DS_NOMBRE || '').toUpperCase() === barrioNorm
+                );
+                if (feat?.geometry?.coordinates) {
+                    // MultiPolygon → get first ring centroid
+                    const coords = feat.geometry.type === 'Polygon'
+                        ? feat.geometry.coordinates[0]
+                        : feat.geometry.coordinates[0][0];
+                    const lngs = coords.map(c => c[0]);
+                    const lats = coords.map(c => c[1]);
+                    const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+                    const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+                    if (map && centerLat && centerLng) {
+                        map.flyTo([centerLat, centerLng], 15, { duration: 1.2 });
+                    }
+                }
+            }
+        }
+
+        async function loadStatsTab() {
+            if (statsInitialized) return;
+            statsInitialized = true;
+            try {
+                const resp = await fetch(`${API_BASE}/stats-overview`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                statsState.statsOverview = data;
+
+                // ---- Populate summary cards ----
+                const t = data.totales || {};
+                document.getElementById('statVVTotal').textContent =
+                    (t.vv_total || 0).toLocaleString('es-ES');
+                document.getElementById('statPlazasTotal').textContent =
+                    (t.plazas_total || 0).toLocaleString('es-ES');
+                document.getElementById('statBarriosVV').textContent =
+                    t.barrios_con_vv || '—';
+
+                // ---- Ratio municipal (dato real Censo 2021) ----
+                if (t.vv_per_100_viviendas_municipal !== undefined) {
+                    document.getElementById('statMunicipalRatio').textContent =
+                        `${t.vv_per_100_viviendas_municipal}%`;
+                    document.getElementById('statMunicipalVV').textContent =
+                        (t.vv_total || 0).toLocaleString('es-ES');
+                    document.getElementById('statMunicipalViv').textContent =
+                        (t.viviendas_municipio_censo_2021 || 0).toLocaleString('es-ES');
+                    document.getElementById('statMunicipalPct').textContent =
+                        t.vv_per_100_viviendas_municipal;
+                }
+
+                // ---- YoY ----
+                const yoy = data.yoy_istac;
+                if (yoy) {
+                    const sign = yoy.vv_change_pct >= 0 ? '+' : '';
+                    document.getElementById('statYoY').textContent =
+                        `${sign}${yoy.vv_change_pct}%`;
+                    document.getElementById('statYoY').style.color =
+                        yoy.vv_change_pct >= 0 ? 'var(--accent)' : 'var(--success)';
+                }
+
+                // ---- Populate barrio selector ----
+                const top = data.top_barrios || [];
+                const sel = document.getElementById('statsBarrioSelect');
+                // Keep first option
+                sel.innerHTML = '<option value="">— Selecciona un barrio —</option>';
+                top.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.barrio;
+                    opt.textContent = `${b.barrio.charAt(0) + b.barrio.slice(1).toLowerCase()} (${b.vv_count} VV)`;
+                    sel.appendChild(opt);
+                });
+
+                sel.addEventListener('change', (e) => selectBarrio(e.target.value));
+
+                // ---- Ranking bar chart (top 15) ----
+                if (top.length > 0 && !statsTabCharts.ranking) {
+                    const rankingsColors = [
+                        '#e63946','#e85d6a','#ec7a83','#f0959a','#f4adb1',
+                        '#f5b8ba','#f6c3c4','#f8cecf','#f9d5d6','#fadcda',
+                        '#fbe0de','#fce3e3','#fde7e7','#fdeaea','#fef1f1',
+                    ];
+                    const options = {
+                        chart: {
+                            type: 'bar',
+                            height: 280,
+                            toolbar: { show: false },
+                            background: 'transparent',
+                            fontFamily: 'Inter, sans-serif',
+                            events: {
+                                dataPointSelection: function(_event, _chart, config) {
+                                    const idx = config.dataPointIndex;
+                                    if (idx >= 0 && top[idx]) {
+                                        selectBarrio(top[idx].barrio);
+                                    }
+                                },
+                            },
+                        },
+                        plotOptions: {
+                            bar: {
+                                horizontal: true,
+                                barHeight: '65%',
+                                borderRadius: 4,
+                                distributed: true,
+                            },
+                        },
+                        colors: rankingsColors,
+                        dataLabels: {
+                            enabled: true,
+                            formatter: (val) => val.toLocaleString('es-ES'),
+                            style: { fontSize: '10px', fontFamily: 'Inter', fontWeight: '400' },
+                        },
+                        series: [{ data: top.map(b => b.vv_count) }],
+                        xaxis: {
+                            categories: top.map(b => b.barrio),
+                            labels: {
+                                style: { colors: '#8b98a5', fontSize: '9px', fontFamily: 'Inter' },
+                                formatter: (val) => val.length > 12 ? val.slice(0, 10) + '…' : val,
+                            },
+                            axisBorder: { show: false },
+                            axisTicks: { show: false },
+                        },
+                        yaxis: {
+                            labels: { style: { colors: '#8b98a5', fontSize: '10px', fontFamily: 'Inter', fontWeight: '500' } },
+                        },
+                        grid: {
+                            borderColor: '#2f3842',
+                            strokeDashArray: 3,
+                            xaxis: { lines: { show: false } },
+                            yaxis: { lines: { show: false } },
+                            padding: { left: 0, right: 10 },
+                        },
+                        tooltip: {
+                            theme: 'dark',
+                            y: { formatter: (val) => `${val.toLocaleString('es-ES')} VV` },
+                        },
+                        legend: { show: false },
+                    };
+                    statsTabCharts.ranking = new ApexCharts(
+                        document.getElementById('chartRanking'),
+                        options
+                    );
+                    statsTabCharts.ranking.render();
+                }
+
+                // ---- Time series chart (ISTAC) ----
+                if (yoy && yoy.series && yoy.series.length > 0 && !statsTabCharts.timeseries) {
+                    const seriesData = yoy.series.map(s => ({
+                        x: s.periodo,
+                        y: s['Viviendas vacacionales disponibles'],
+                    }));
+                    const optionsTs = {
+                        chart: {
+                            type: 'area',
+                            height: 200,
+                            toolbar: { show: false },
+                            background: 'transparent',
+                            fontFamily: 'Inter, sans-serif',
+                            sparkline: { enabled: false },
+                        },
+                        stroke: { curve: 'smooth', width: 2, colors: ['#e63946'] },
+                        fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shadeIntensity: 1,
+                                opacityFrom: 0.4,
+                                opacityTo: 0.05,
+                                stops: [0, 100],
+                                colorStops: [
+                                    { offset: 0, color: '#e63946', opacity: 0.4 },
+                                    { offset: 100, color: '#e63946', opacity: 0.05 },
+                                ],
+                            },
+                        },
+                        colors: ['#e63946'],
+                        series: [{ name: 'VV disponibles', data: seriesData }],
+                        xaxis: {
+                            type: 'category',
+                            labels: {
+                                style: { colors: '#8b98a5', fontSize: '9px', fontFamily: 'Inter' },
+                                rotate: -45,
+                                rotateAlways: false,
+                            },
+                            axisBorder: { show: false },
+                            axisTicks: { show: false },
+                            tickAmount: 8,
+                        },
+                        yaxis: {
+                            labels: {
+                                style: { colors: '#8b98a5', fontSize: '9px', fontFamily: 'Inter' },
+                                formatter: (val) => val >= 1000 ? `${(val/1000).toFixed(1)}k` : val,
+                            },
+                        },
+                        grid: {
+                            borderColor: '#2f3842',
+                            strokeDashArray: 3,
+                            xaxis: { lines: { show: false } },
+                            yaxis: { lines: { show: true } },
+                        },
+                        tooltip: {
+                            theme: 'dark',
+                            y: { formatter: (val) => `${val.toLocaleString('es-ES')} VV` },
+                        },
+                        markers: { size: 0 },
+                    };
+                    statsTabCharts.timeseries = new ApexCharts(
+                        document.getElementById('chartTimeseries'),
+                        optionsTs
+                    );
+                    statsTabCharts.timeseries.render();
+                }
+
+            } catch (error) {
+                console.error('Error cargando stats tab:', error);
             }
         }
 

@@ -219,6 +219,310 @@ def _np_to_native(obj):
     return obj
 
 
+def _normalize_barrio(name: str) -> str:
+    """Normaliza nombre de barrio para matching: uppercase y strip."""
+    return name.strip().upper()
+
+
+def _calculate_barrio_ratios(
+    vv_count: int, plazas: int, poblacion: int, viv_estimadas: float | None = None
+) -> dict:
+    """
+    Calcula ratios de presión turística por barrio.
+
+    Args:
+        vv_count: número de viviendas vacacionales
+        plazas: plazas totales
+        poblacion: población del barrio
+        viv_estimadas: viviendas estimadas (default: población / 2.2)
+
+    Nota sobre viviendas estimadas:
+        El INE no publica datos de viviendas por barrio para LPGC.
+        Usamos población / tamaño_medio_hogar como proxy.
+        2.2 = promedio Canarias (INE Censo 2021: 175181 viviendas / ~380k pop).
+        Este cálculo es una estimación — no es un dato censal directo.
+
+    Returns:
+        Dict con ratios calculados. Poblacion 0 o negativas devuelven 0 en ratios.
+    """
+    if viv_estimadas is None:
+        viv_estimadas = poblacion / 2.2
+
+    result = {
+        "vv_count": vv_count,
+        "plazas": plazas,
+        "poblacion": poblacion,
+        "viv_estimadas": round(viv_estimadas, 1),
+        "is_synthetic_population": True,
+        "is_synthetic_viviendas": True,
+    }
+
+    if poblacion > 0:
+        result["vv_per_1000hab"] = round((vv_count / poblacion) * 1000, 2)
+        result["plazas_per_1000hab"] = round((plazas / poblacion) * 1000, 2)
+    else:
+        result["vv_per_1000hab"] = 0
+        result["plazas_per_1000hab"] = 0
+
+    if viv_estimadas > 0:
+        result["vv_per_100_viviendas"] = round((vv_count / viv_estimadas) * 100, 2)
+    else:
+        result["vv_per_100_viviendas"] = 0
+
+    return result
+
+
+@app.get("/barrio-detail/{nombre}")
+def get_barrio_detail(nombre: str):
+    """
+    Devuelve detalle completo de un barrio: VV, plazas, ratios, ranking.
+
+    Usa datos del Registro Turismo (real) y población INE (sintética).
+    """
+    turismo_path = DATA_RAW_DIR / "turismo_lpgc_with_barrios.csv"
+    ine_path = DATA_RAW_DIR / "ine_population_processed.csv"
+
+    barrio_norm = _normalize_barrio(nombre)
+
+    # ---- Turismo: datos reales por barrio ----
+    vv_count = 0
+    plazas_totales = 0
+    vv_list = []
+
+    if turismo_path.exists():
+        df_tur = pd.read_csv(turismo_path)
+        df_barrio = df_tur[df_tur["barrio_asignado"].notna()]
+        df_barrio = df_barrio[df_barrio["barrio_asignado"] != "_U"]
+        df_barrio = df_barrio[
+            df_barrio["barrio_asignado"].apply(_normalize_barrio) == barrio_norm
+        ]
+
+        vv_count = len(df_barrio)
+        plazas_totales = int(df_barrio["plazas"].fillna(0).sum())
+
+        # Sample points para el mapa (máx 200)
+        sample = df_barrio[df_barrio["lat"] != 0].head(200)
+        vv_list = _np_to_native(
+            sample[["lat", "lng", "plazas", "nombre"]]
+            .fillna("")
+            .to_dict(orient="records")
+        )
+
+    # ---- Población INE (sintética) ----
+    poblacion = 0
+    if ine_path.exists():
+        df_ine = pd.read_csv(ine_path)
+        latest_ano = int(df_ine["ano"].max())
+        row = df_ine[
+            (df_ine["ano"] == latest_ano)
+            & (df_ine["barrio"].apply(_normalize_barrio) == barrio_norm)
+        ]
+        if not row.empty:
+            poblacion = int(row["poblacion"].iloc[0])
+
+    # Si no hay datos, devolver 404
+    if vv_count == 0 and poblacion == 0:
+        raise HTTPException(status_code=404, detail=f"Barrio '{nombre}' no encontrado")
+
+    ratios = _calculate_barrio_ratios(vv_count, plazas_totales, poblacion)
+
+    # ---- Ranking: posición del barrio en el top total ----
+    ranking = None
+    if turismo_path.exists():
+        df_tur = pd.read_csv(turismo_path)
+        df_all = df_tur[df_tur["barrio_asignado"].notna()]
+        df_all = df_all[df_all["barrio_asignado"] != "_U"]
+        counts = df_all.groupby(
+            df_all["barrio_asignado"].apply(_normalize_barrio)
+        ).size()
+        counts = counts.sort_values(ascending=False)
+        if barrio_norm in counts.index:
+            posicion = counts.index.get_loc(barrio_norm) + 1
+            ranking = {
+                "posicion": posicion,
+                "total_barrios_con_vv": len(counts),
+                "vv_en_posicion": int(counts.iloc[posicion - 1]),
+            }
+
+    # Ratios municipales de referencia (INE Censo 2021 + Registro Turismo total)
+    VIVIENDAS_MUNICIPIO_CENSO_2021 = 175181
+    VV_TOTAL_MUNICIPIO = 4531  # Total VV del Registro Turismo para LPGC
+    vv_per_100_viviendas_municipal = round(
+        VV_TOTAL_MUNICIPIO / VIVIENDAS_MUNICIPIO_CENSO_2021 * 100, 2
+    )
+
+    return _np_to_native(
+        {
+            "barrio": nombre.strip(),
+            "barrio_normalized": barrio_norm,
+            "viviendas_count": vv_count,
+            "plazas": plazas_totales,
+            "poblacion": poblacion,
+            "ratios": ratios,
+            "ranking": ranking,
+            "points": vv_list,
+            "vv_per_100_viviendas_municipal": vv_per_100_viviendas_municipal,
+            "sources": {
+                "viviendas": "Registro Turismo de Canarias",
+                "poblacion": "INE (sintético — ekstracción por ekstracción de la población)",
+                "viviendas_municipio": "INE Censo 2021 (tabla 59525) — 175,181 viviendas",
+            },
+        }
+    )
+
+    return _np_to_native(
+        {
+            "barrio": nombre.strip(),
+            "barrio_normalized": barrio_norm,
+            "viviendas_count": vv_count,
+            "plazas": plazas_totales,
+            "poblacion": poblacion,
+            "ratios": ratios,
+            "ranking": ranking,
+            "points": vv_list,
+            "vv_per_100_viviendas_municipal": vv_per_100_viviendas_municipal,
+            "sources": {
+                "viviendas": "Registro Turismo de Canarias",
+                "poblacion": "INE (sintético — ekstracción por ekstracción de la población)",
+                "viviendas_municipio": "INE Censo 2021 (tabla 59525) — 175,181 viviendas",
+            },
+        }
+    )
+
+
+@app.get("/stats-overview")
+def get_stats_overview(top_n: int = 15):
+    """
+    Overview de estadísticas: top barrios, totales, comparativa YoY.
+
+    Args:
+        top_n: número de barrios en el ranking (default 15, max 50)
+    """
+    top_n = max(1, min(50, top_n))
+
+    turismo_path = DATA_RAW_DIR / "turismo_lpgc_with_barrios.csv"
+    ine_path = DATA_RAW_DIR / "ine_population_processed.csv"
+    istac_path = DATA_RAW_DIR / "istac_viviendas_lpgc_pivot.csv"
+
+    result = {
+        "top_barrios": [],
+        "totales": {},
+        "yoy_istac": None,
+    }
+
+    # ---- Top barrios por VV count ----
+    if turismo_path.exists():
+        df_tur = pd.read_csv(turismo_path)
+        df_valid = df_tur[df_tur["barrio_asignado"].notna()]
+        df_valid = df_valid[df_valid["barrio_asignado"] != "_U"]
+
+        # Agrupar por barrio normalizado
+        grouped = (
+            df_valid.groupby(df_valid["barrio_asignado"].apply(_normalize_barrio))
+            .agg(
+                vv_count=("establecimiento_id", "count"),
+                plazas=("plazas", "sum"),
+            )
+            .reset_index()
+        )
+        # Filtrar: excluir el nombre del municipio (no es un barrio real)
+        grouped = grouped[grouped["barrio_asignado"] != "LAS PALMAS DE GRAN CANARIA"]
+        grouped = grouped.sort_values("vv_count", ascending=False).head(top_n)
+
+        top_barrios = []
+        for _, row in grouped.iterrows():
+            barrio_norm = row["barrio_asignado"]
+            # Buscar población para ese barrio
+            poblacion = 0
+            if ine_path.exists():
+                df_ine = pd.read_csv(ine_path)
+                latest_ano = int(df_ine["ano"].max())
+                ine_row = df_ine[
+                    (df_ine["ano"] == latest_ano)
+                    & (df_ine["barrio"].apply(_normalize_barrio) == barrio_norm)
+                ]
+                if not ine_row.empty:
+                    poblacion = int(ine_row["poblacion"].iloc[0])
+
+            ratios = _calculate_barrio_ratios(
+                int(row["vv_count"]), int(row["plazas"]), poblacion
+            )
+            top_barrios.append(
+                {
+                    "barrio": barrio_norm,
+                    "vv_count": int(row["vv_count"]),
+                    "plazas": int(row["plazas"]),
+                    "ratios": ratios,
+                }
+            )
+
+        result["top_barrios"] = _np_to_native(top_barrios)
+
+        # ---- Totales municipio + ratio real con censo 2021 ----
+        vv_total = int(df_valid["establecimiento_id"].count())
+        plazas_total = int(df_valid["plazas"].fillna(0).sum())
+        # INE Censo 2021: 175181 viviendas familiares en LPGC (35016)
+        # Fuente: https://ine.es/dynt3/inebase/es/index.htm?padre=8952&capsel=9809 (tabla 59525)
+        VIVIENDAS_MUNICIPIO_CENSO_2021 = 175181
+        POBLACION_MUNICIPIO_INE_2024 = 380436
+
+        result["totales"] = _np_to_native(
+            {
+                "vv_total": vv_total,
+                "plazas_total": plazas_total,
+                "barrios_con_vv": int(grouped["barrio_asignado"].nunique()),
+                "barrios_analizados": top_n,
+                # Ratios municipales con datos reales del Censo 2021
+                "viviendas_municipio_censo_2021": VIVIENDAS_MUNICIPIO_CENSO_2021,
+                "poblacion_municipio_ine_2024": POBLACION_MUNICIPIO_INE_2024,
+                "vv_per_100_viviendas_municipal": round(
+                    vv_total / VIVIENDAS_MUNICIPIO_CENSO_2021 * 100, 2
+                ),
+            }
+        )
+
+    # ---- Comparativa YoY desde ISTAC ----
+    if istac_path.exists():
+        df_istac = pd.read_csv(istac_path)
+        df_istac["periodo_dt"] = pd.to_datetime(df_istac["periodo"], format="%m/%Y")
+        df_istac = df_istac.sort_values("periodo_dt")
+
+        latest = df_istac.iloc[-1]
+        year_ago_idx = max(0, len(df_istac) - 12)
+        year_ago = df_istac.iloc[year_ago_idx]
+
+        result["yoy_istac"] = _np_to_native(
+            {
+                "periodo_actual": latest["periodo"],
+                "periodo_year_ago": year_ago["periodo"],
+                "vv_actual": int(latest["Viviendas vacacionales disponibles"]),
+                "vv_year_ago": int(year_ago["Viviendas vacacionales disponibles"]),
+                "vv_change_pct": round(
+                    (
+                        int(latest["Viviendas vacacionales disponibles"])
+                        - int(year_ago["Viviendas vacacionales disponibles"])
+                    )
+                    / int(year_ago["Viviendas vacacionales disponibles"])
+                    * 100,
+                    1,
+                )
+                if int(year_ago["Viviendas vacacionales disponibles"]) > 0
+                else 0,
+                "series": _np_to_native(
+                    df_istac[
+                        [
+                            "periodo",
+                            "Viviendas vacacionales disponibles",
+                            "Plazas disponibles",
+                        ]
+                    ].to_dict(orient="records")
+                ),
+            }
+        )
+
+    return result
+
+
 @app.get("/map-data")
 def get_map_data():
     """
@@ -328,6 +632,34 @@ def get_map_data():
             .rename(columns={"lat": "lat", "lng": "lng"})
             .to_dict(orient="records")
         )
+
+    # ---- Ratios VV/población por barrio ----
+    result["ratios"] = {"by_barrio": {}}
+    turismo_path = DATA_RAW_DIR / "turismo_lpgc_with_barrios.csv"
+    if turismo_path.exists() and ine_path.exists():
+        df_tur = pd.read_csv(turismo_path)
+        df_valid = df_tur[df_tur["barrio_asignado"].notna()]
+        df_valid = df_valid[df_valid["barrio_asignado"] != "_U"]
+
+        grouped = df_valid.groupby(
+            df_valid["barrio_asignado"].apply(_normalize_barrio)
+        ).agg(vv_count=("establecimiento_id", "count"), plazas=("plazas", "sum"))
+
+        df_ine = pd.read_csv(ine_path)
+        latest_ano = int(df_ine["ano"].max())
+        df_ine_latest = df_ine[df_ine["ano"] == latest_ano].copy()
+        df_ine_latest["barrio_norm"] = df_ine_latest["barrio"].apply(_normalize_barrio)
+        latest_pop = df_ine_latest.set_index("barrio_norm")["poblacion"]
+
+        ratios_by_barrio = {}
+        for barrio_norm, row in grouped.iterrows():
+            poblacion = int(latest_pop.get(barrio_norm, 0))
+            ratios = _calculate_barrio_ratios(
+                int(row["vv_count"]), int(row["plazas"]), poblacion
+            )
+            ratios_by_barrio[barrio_norm] = ratios
+
+        result["ratios"]["by_barrio"] = _np_to_native(ratios_by_barrio)
 
     return result
 
